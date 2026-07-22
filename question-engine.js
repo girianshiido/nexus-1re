@@ -242,9 +242,14 @@
     const ordered = [root1, root2].sort((x, y) => x - y);
     const good = `x = ${ordered[0]} ou x = ${ordered[1]}`;
     const factors = [a, b].sort((x, y) => Number(x !== 0) - Number(y !== 0)).map(linearFactor);
+    const wrongRoot = root => [1, -1, 2, -2]
+      .map(offset => root + offset)
+      .find(candidate => !ordered.includes(candidate));
+    const wrongFirst = wrongRoot(ordered[0]);
+    const wrongSecond = wrongRoot(ordered[1]);
     const { choices, answer } = makeChoices(good, [
-      `x = ${a} ou x = ${b}`,
-      `x = ${root1 + 1} ou x = ${root2 + 1}`,
+      `x = ${wrongFirst} ou x = ${ordered[1]}`,
+      `x = ${ordered[0]} ou x = ${wrongSecond}`,
       `x = ${root1 * root2}`
     ], rng);
     return {

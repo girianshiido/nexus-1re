@@ -29,6 +29,15 @@ const productRandomValues = [0.86, 0.5];
 const productWithZero = engine.GENERATORS.factory[0](() => productRandomValues.shift() ?? 0.5);
 assert.match(productWithZero.prompt, /Résoudre x\(x \+ 5\) = 0\./, "le facteur x + 0 doit être écrit x et placé en premier");
 
+const symmetricProductRandomValues = [0.9, 0.1, 0.5, 0.5, 0.5];
+const symmetricProduct = engine.GENERATORS.factory[0](() => symmetricProductRandomValues.shift() ?? 0.5);
+assert.match(symmetricProduct.prompt, /Résoudre \(x \+ 5\)\(x − 5\) = 0\./, "le produit symétrique doit être généré");
+const normalizePair = choice => {
+  const pair = choice.match(/^x = (-?\d+) ou x = (-?\d+)$/);
+  return pair ? pair.slice(1).map(Number).sort((a, b) => a - b).join("|") : choice;
+};
+assert.equal(new Set(symmetricProduct.choices.map(normalizePair)).size, 4, "les solutions inversées ne doivent pas être proposées deux fois");
+
 const conversionRandomValues = [0.9, 0.3, 0, 0.5, 0.5, 0.5];
 const preciseConversion = engine.SKILL_GENERATORS.units[0](() => conversionRandomValues.shift() ?? 0.5);
 assert.equal(preciseConversion.prompt, "Convertir 0,0005 km en cm.", "une petite mesure ne doit pas être arrondie dans l'énoncé");
@@ -65,6 +74,11 @@ for (const world of worlds) {
     if (recentKeys.length > 12) recentKeys.shift();
     if (recentKinds.length > 2) recentKinds.shift();
   }
+}
+
+for (let i = 0; i < 500; i += 1) {
+  const question = engine.GENERATORS.factory[0]();
+  assert.equal(new Set(question.choices.map(normalizePair)).size, 4, "une équation produit ne doit jamais avoir deux choix équivalents");
 }
 
 for (const skill of Object.keys(engine.SKILL_GENERATORS)) {
