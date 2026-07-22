@@ -71,6 +71,7 @@
     unlockedSkills: $("#unlocked-skills"),
     workshopList: $("#workshop-list"),
     helpButton: $("#help-button"),
+    soundButton: $("#sound-button"),
     helpDialog: $("#help-dialog"),
     eventDialog: $("#event-dialog"),
     eventClose: $("#event-close"),
@@ -121,6 +122,7 @@
       calibration: 0,
       nextEventAt: Date.now() + 25000,
       eventWins: 0,
+      soundEnabled: true,
       bulk: "1",
       recentKeys: [],
       recentKinds: [],
@@ -152,6 +154,7 @@
   let currentAnswered = false;
   let confirmMode = null;
   let toastTimer = 0;
+  let audioContext = null;
   let lastFrame = performance.now();
   let lastRender = 0;
   let lastSave = 0;
@@ -210,6 +213,55 @@
     toastTimer = setTimeout(() => dom.toast.classList.remove("show"), 2800);
   }
 
+  function playTone(frequency, duration, options = {}) {
+    if (!state.soundEnabled) return;
+    try {
+      audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
+      if (audioContext.state === "suspended") audioContext.resume();
+      const start = audioContext.currentTime + (options.delay || 0);
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      oscillator.type = options.type || "sine";
+      oscillator.frequency.setValueAtTime(frequency, start);
+      if (options.endFrequency) oscillator.frequency.exponentialRampToValueAtTime(options.endFrequency, start + duration);
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(options.volume || 0.025, start + 0.008);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+      oscillator.connect(gain).connect(audioContext.destination);
+      oscillator.start(start);
+      oscillator.stop(start + duration + 0.02);
+    } catch { /* les sons restent facultatifs */ }
+  }
+
+  function playSound(name) {
+    if (name === "click") playTone(170, 0.045, { type: "triangle", endFrequency: 115, volume: 0.018 });
+    if (name === "buy") {
+      playTone(390, 0.11, { volume: 0.025 });
+      playTone(620, 0.14, { delay: 0.07, volume: 0.023 });
+    }
+    if (name === "event") {
+      playTone(300, 0.16, { type: "triangle", volume: 0.026 });
+      playTone(450, 0.2, { delay: 0.12, type: "triangle", volume: 0.024 });
+    }
+    if (name === "correct") {
+      playTone(520, 0.12, { volume: 0.026 });
+      playTone(780, 0.18, { delay: 0.08, volume: 0.025 });
+    }
+    if (name === "wrong") playTone(180, 0.2, { type: "square", endFrequency: 125, volume: 0.015 });
+    if (name === "hyper") playTone(220, 0.42, { type: "sawtooth", endFrequency: 820, volume: 0.022 });
+    if (name === "cycle") {
+      playTone(260, 0.18, { volume: 0.026 });
+      playTone(390, 0.2, { delay: 0.1, volume: 0.025 });
+      playTone(580, 0.25, { delay: 0.2, volume: 0.024 });
+    }
+  }
+
+  function updateSoundButton() {
+    dom.soundButton.textContent = state.soundEnabled ? "♪" : "×";
+    dom.soundButton.setAttribute("aria-pressed", String(state.soundEnabled));
+    dom.soundButton.setAttribute("aria-label", state.soundEnabled ? "Désactiver les sons" : "Activer les sons");
+  }
+
   function spawnFloat(amount) {
     const gain = document.createElement("span");
     gain.className = "float-gain";
@@ -222,6 +274,7 @@
   function activateHyper() {
     state.hyperUntil = now() + HYPER_DURATION;
     state.chargeClicks = 0;
+    playSound("hyper");
     showToast("Hypercadence ! Clics ×5 et impulsions automatiques pendant 10 s.");
   }
 
@@ -230,6 +283,7 @@
     const gain = clickValue() * (hyper ? 5 : 1);
     state.totalClicks += 1;
     addFlux(gain);
+    playSound("click");
     spawnFloat(gain);
     dom.coreButton.classList.add("pulse");
     setTimeout(() => dom.coreButton.classList.remove("pulse"), 90);
@@ -252,6 +306,7 @@
     const first = (state.workshops[id] || 0) === 0;
     state.flux -= quote.cost;
     state.workshops[id] += quote.quantity;
+    playSound("buy");
     if (first) {
       state.nextEventAt = Math.min(state.nextEventAt, now() + 12000);
       showToast(`${workshop.name} activé : les questions de ${Engine.SKILLS[id].toLowerCase()} sont débloquées.`);
@@ -279,6 +334,7 @@
       skills: unlocked.map(workshop => workshop.id),
       questionCount
     };
+    playSound("event");
   }
 
   function scheduleNextEvent() {
@@ -354,8 +410,10 @@
       state.mastery[currentQuestion.skill] = (state.mastery[currentQuestion.skill] || 0) + 1;
       eventRun.correct += 1;
       if (elapsed <= FAST_TIME) eventRun.fast += 1;
+      playSound("correct");
     } else {
       state.currentStreak = 0;
+      playSound("wrong");
     }
 
     [...dom.answers.children].forEach((button, buttonIndex) => {
@@ -445,6 +503,7 @@
     scheduleNextEvent();
     save();
     renderWorkshops();
+    playSound("cycle");
     showToast(`Cycle ${state.cycle} lancé avec un multiplicateur permanent ×${format(permanentMultiplier())}.`);
   }
 
@@ -619,6 +678,12 @@
 
   dom.coreButton.addEventListener("click", clickCore);
   dom.helpButton.addEventListener("click", () => dom.helpDialog.showModal());
+  dom.soundButton.addEventListener("click", () => {
+    state.soundEnabled = !state.soundEnabled;
+    updateSoundButton();
+    if (state.soundEnabled) playTone(520, 0.12, { volume: 0.025 });
+    save();
+  });
   dom.eventStart.addEventListener("click", startEvent);
   dom.eventClose.addEventListener("click", () => dom.eventDialog.close());
   dom.eventNext.addEventListener("click", advanceEvent);
@@ -646,6 +711,7 @@
   });
 
   createWorkshopCards();
+  updateSoundButton();
   document.querySelectorAll(".bulk-button").forEach(button => button.classList.toggle("active", button.dataset.bulk === String(state.bulk)));
   applyOfflineProgress();
   renderWorkshops();

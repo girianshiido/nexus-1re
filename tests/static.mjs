@@ -19,6 +19,7 @@ assert.match(html, /viewport-fit=cover/, "la vue mobile doit être configurée")
 assert.match(html, /rel="manifest"/, "le manifeste d'installation doit être relié");
 assert.match(html, /rel="apple-touch-icon"/, "l'icône iPhone doit être reliée");
 assert.match(app, /serviceWorker\.register/, "le service worker doit être enregistré");
+assert.match(app, /AudioContext/, "les bruitages doivent être générés par le navigateur");
 
 const manifest = JSON.parse(manifestText);
 assert.equal(manifest.display, "standalone", "le jeu installé doit s'ouvrir en mode autonome");
