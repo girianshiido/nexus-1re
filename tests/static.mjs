@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { access, readFile } from "node:fs/promises";
 
-const [html, app, manifestText, serviceWorker] = await Promise.all([
+const [html, app, styles, manifestText, serviceWorker] = await Promise.all([
   readFile(new URL("../index.html", import.meta.url), "utf8"),
   readFile(new URL("../app.js", import.meta.url), "utf8"),
+  readFile(new URL("../styles.css", import.meta.url), "utf8"),
   readFile(new URL("../manifest.webmanifest", import.meta.url), "utf8"),
   readFile(new URL("../service-worker.js", import.meta.url), "utf8")
 ]);
@@ -16,6 +17,10 @@ for (const id of requiredIds) assert.ok(ids.has(id), `élément #${id} manquant 
 
 assert.match(html, /question-engine\.js[^]*game-model\.js[^]*app\.js/, "les scripts doivent être chargés dans le bon ordre");
 assert.match(html, /viewport-fit=cover/, "la vue mobile doit être configurée");
+assert.match(html, /maximum-scale=1/, "le zoom par pincement doit être désactivé");
+assert.match(html, /user-scalable=no/, "le zoom tactile doit être verrouillé");
+assert.match(styles, /touch-action:\s*pan-x pan-y/, "le défilement doit rester autorisé sans zoom tactile");
+assert.match(styles, /user-select:\s*none/, "la sélection de texte doit être désactivée");
 assert.match(html, /rel="manifest"/, "le manifeste d'installation doit être relié");
 assert.match(html, /rel="apple-touch-icon"/, "l'icône iPhone doit être reliée");
 assert.match(app, /serviceWorker\.register/, "le service worker doit être enregistré");
