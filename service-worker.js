@@ -1,11 +1,10 @@
-const CACHE_NAME = "nexus-laboratoire-v3";
+const CACHE_NAME = "nexus-laboratoire-v4";
 const APP_SHELL = [
-  "./",
   "./index.html",
   "./styles.css?v=6",
   "./question-engine.js?v=5",
   "./game-model.js?v=1",
-  "./app.js?v=6",
+  "./app.js?v=7",
   "./manifest.webmanifest",
   "./assets/favicon-64.png",
   "./assets/apple-touch-icon.png",
@@ -14,7 +13,9 @@ const APP_SHELL = [
 ];
 
 self.addEventListener("install", event => {
-  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)));
+  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(
+    APP_SHELL.map(url => new Request(url, { cache: "reload" }))
+  )));
   self.skipWaiting();
 });
 
@@ -28,12 +29,22 @@ self.addEventListener("activate", event => {
 
 self.addEventListener("fetch", event => {
   if (event.request.method !== "GET") return;
+  if (event.request.mode === "navigate") {
+    event.respondWith(
+      fetch(new Request(event.request, { cache: "reload" })).then(response => {
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put("./index.html", copy));
+        return response;
+      }).catch(() => caches.match("./index.html"))
+    );
+    return;
+  }
   event.respondWith(
     caches.match(event.request).then(cached => cached || fetch(event.request).then(response => {
       if (!response || response.status !== 200 || response.type === "opaque") return response;
       const copy = response.clone();
       caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
       return response;
-    }).catch(() => event.request.mode === "navigate" ? caches.match("./index.html") : undefined))
+    }).catch(() => undefined))
   );
 });

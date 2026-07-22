@@ -262,6 +262,58 @@
     dom.soundButton.setAttribute("aria-label", state.soundEnabled ? "Désactiver les sons" : "Activer les sons");
   }
 
+  function installTouchGuards() {
+    let touchStart = null;
+    let lastTap = null;
+    const pointOf = touch => ({ x: touch.clientX, y: touch.clientY });
+    const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+
+    document.addEventListener("touchstart", event => {
+      if (event.touches.length > 1) {
+        event.preventDefault();
+        touchStart = null;
+        return;
+      }
+      const touch = event.touches[0];
+      touchStart = touch ? { ...pointOf(touch), time: performance.now(), moved: false } : null;
+    }, { passive: false });
+
+    document.addEventListener("touchmove", event => {
+      if (event.touches.length > 1) {
+        event.preventDefault();
+        touchStart = null;
+        return;
+      }
+      const touch = event.touches[0];
+      if (touchStart && touch && distance(touchStart, pointOf(touch)) > 12) touchStart.moved = true;
+    }, { passive: false });
+
+    document.addEventListener("touchend", event => {
+      const touch = event.changedTouches[0];
+      if (!touch || !touchStart || touchStart.moved || performance.now() - touchStart.time > 450) {
+        touchStart = null;
+        return;
+      }
+      const tap = { ...pointOf(touch), time: performance.now() };
+      const isDoubleTap = lastTap && tap.time - lastTap.time < 330 && distance(lastTap, tap) < 32;
+      if (isDoubleTap) {
+        event.preventDefault();
+        const target = event.target instanceof Element ? event.target.closest("button, a") : null;
+        if (target && !target.matches(":disabled")) target.click();
+        lastTap = null;
+      } else {
+        lastTap = tap;
+      }
+      touchStart = null;
+    }, { passive: false });
+
+    document.addEventListener("touchcancel", () => { touchStart = null; }, { passive: true });
+    document.addEventListener("dblclick", event => event.preventDefault(), { passive: false });
+    ["gesturestart", "gesturechange", "gestureend"].forEach(type => {
+      document.addEventListener(type, event => event.preventDefault(), { passive: false });
+    });
+  }
+
   function spawnFloat(amount) {
     const gain = document.createElement("span");
     gain.className = "float-gain";
@@ -710,6 +762,7 @@
     }
   });
 
+  installTouchGuards();
   createWorkshopCards();
   updateSoundButton();
   document.querySelectorAll(".bulk-button").forEach(button => button.classList.toggle("active", button.dataset.bulk === String(state.bulk)));
@@ -727,8 +780,16 @@
   };
 
   if ("serviceWorker" in navigator) {
+    let reloadingForUpdate = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (reloadingForUpdate) return;
+      reloadingForUpdate = true;
+      window.location.reload();
+    });
     window.addEventListener("load", () => {
-      navigator.serviceWorker.register("./service-worker.js").catch(() => { /* jeu utilisable sans mode hors ligne */ });
+      navigator.serviceWorker.register("./service-worker.js", { updateViaCache: "none" })
+        .then(registration => registration.update())
+        .catch(() => { /* jeu utilisable sans mode hors ligne */ });
     });
   }
 })();

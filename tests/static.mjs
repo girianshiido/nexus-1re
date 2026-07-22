@@ -25,6 +25,11 @@ assert.match(html, /rel="manifest"/, "le manifeste d'installation doit être rel
 assert.match(html, /rel="apple-touch-icon"/, "l'icône iPhone doit être reliée");
 assert.match(app, /serviceWorker\.register/, "le service worker doit être enregistré");
 assert.match(app, /AudioContext/, "les bruitages doivent être générés par le navigateur");
+assert.match(app, /gesturestart/, "les gestes de pincement iOS doivent être bloqués explicitement");
+assert.match(app, /touches\.length > 1/, "les mouvements à plusieurs doigts doivent être bloqués");
+assert.match(app, /isDoubleTap/, "le double tap iOS doit être intercepté sans bloquer le défilement");
+assert.match(serviceWorker, /event\.request\.mode === "navigate"/, "les navigations de l'application installée doivent être actualisées en priorité");
+assert.match(serviceWorker, /cache: "reload"/, "le cache HTTP ne doit pas masquer les mises à jour installées");
 
 const manifest = JSON.parse(manifestText);
 assert.equal(manifest.display, "standalone", "le jeu installé doit s'ouvrir en mode autonome");
