@@ -42,6 +42,11 @@
     return new Intl.NumberFormat("fr-FR", { maximumFractionDigits: digits }).format(rounded);
   }
 
+  function formatEvolutionRate(value, digits = 1) {
+    if (Math.abs(value) < 1e-9) return "Pas d'évolution";
+    return `${value > 0 ? "+" : "−"}${formatNumber(Math.abs(value), digits)} %`;
+  }
+
   function gcd(a, b) {
     let x = Math.abs(a);
     let y = Math.abs(b);
@@ -75,6 +80,7 @@
       .replace(/,/g, ".")
       .replace(/\s+/g, " ");
     const compact = normalized.replace(/\s/g, "");
+    if (compact === "pasd'évolution" || compact === "pasdevolution") return "number:0:%";
     const fractional = compact.match(/^([+-]?\d+)\/([+-]?\d+)$/);
     if (fractional && Number(fractional[2]) !== 0) return `fraction:${fraction(Number(fractional[1]), Number(fractional[2]))}`;
     const solutionPair = compact.match(/^x=([+-]?\d+(?:\.\d+)?)oux=([+-]?\d+(?:\.\d+)?)$/);
@@ -121,7 +127,9 @@
       if (Number.isFinite(numeric)) {
         candidate = String(numeric + bump);
       } else if (embedded) {
-        const changed = String(Number(embedded[0].replace(",", ".")) + bump).replace(".", embedded[0].includes(",") ? "," : ".");
+        const changedValue = Number(embedded[0].replace(",", ".")) + bump;
+        let changed = String(changedValue).replace(".", embedded[0].includes(",") ? "," : ".");
+        if (embedded[0].startsWith("+") && changedValue >= 0) changed = `+${changed}`;
         candidate = `${source.slice(0, embedded.index)}${changed}${source.slice(embedded.index + embedded[0].length)}`;
       } else {
         candidate = bump === 1 ? `Ni ${source.toLowerCase()}` : bump === 2 ? `L'inverse de « ${source} »` : `Cas alternatif ${bump}`;
@@ -480,19 +488,21 @@
     const r1 = pick([-20, -10, 10, 20, 25], rng);
     const r2 = pick([-20, -10, 10, 20, 25], rng);
     const total = ((1 + r1 / 100) * (1 + r2 / 100) - 1) * 100;
-    const good = `${total >= 0 ? "+" : "−"}${formatNumber(Math.abs(total), 1)} %`;
+    const good = formatEvolutionRate(total);
     const sum = r1 + r2;
     const { choices, answer } = makeChoices(good, [
-      `${sum >= 0 ? "+" : "−"}${Math.abs(sum)} %`,
-      `${total >= 0 ? "+" : "−"}${formatNumber(Math.abs(total) + 2, 1)} %`,
-      `${total < 0 ? "+" : "−"}${formatNumber(Math.abs(total), 1)} %`
+      formatEvolutionRate(sum),
+      formatEvolutionRate(total + (total >= 0 ? 2 : -2)),
+      formatEvolutionRate(Math.abs(total) < 1e-9 ? -2 : -total)
     ], rng);
     return {
       kind: "successive-rates",
       skill: "evolutions",
       prompt: `Une valeur évolue de ${r1 >= 0 ? "+" : "−"}${Math.abs(r1)} %, puis de ${r2 >= 0 ? "+" : "−"}${Math.abs(r2)} %. Quelle est l'évolution globale ?`,
       choices, answer,
-      explanation: `Les coefficients se multiplient : ${formatNumber(1 + r1 / 100)} × ${formatNumber(1 + r2 / 100)} = ${formatNumber(1 + total / 100, 3)}, soit ${good}.`
+      explanation: Math.abs(total) < 1e-9
+        ? `Les coefficients se multiplient : ${formatNumber(1 + r1 / 100)} × ${formatNumber(1 + r2 / 100)} = 1. La valeur finale est égale à la valeur initiale : il n'y a pas d'évolution.`
+        : `Les coefficients se multiplient : ${formatNumber(1 + r1 / 100)} × ${formatNumber(1 + r2 / 100)} = ${formatNumber(1 + total / 100, 3)}, soit ${good}.`
     };
   }
 

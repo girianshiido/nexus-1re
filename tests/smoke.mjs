@@ -66,6 +66,12 @@ const inclusiveOrQuestion = engine.SKILL_GENERATORS.logic[1](() => 0.9);
 assert.match(inclusiveOrQuestion.prompt, /est-elle fausse et la condition .* vraie/, "la question sur OU doit expliciter les valeurs de vérité attendues");
 assert.doesNotMatch(inclusiveOrQuestion.prompt, /grâce uniquement/, "la formulation ne doit pas suggérer implicitement un OU exclusif");
 
+const zeroEvolutionValues = [0.9, 0];
+const zeroEvolution = engine.SKILL_GENERATORS.evolutions[2](() => zeroEvolutionValues.shift() ?? 0.5);
+assert.equal(zeroEvolution.choices[zeroEvolution.answer], "Pas d'évolution", "un taux nul doit être formulé sans signe +");
+assert.ok(zeroEvolution.choices.includes("+5 %"), "un taux strictement positif doit afficher le signe +");
+assert.ok(!zeroEvolution.choices.includes("+0 %"), "la formulation +0 % doit être évitée");
+
 let randomSeed = 123456789;
 const seededRandom = () => {
   randomSeed = (1664525 * randomSeed + 1013904223) >>> 0;
