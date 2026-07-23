@@ -1,7 +1,7 @@
 {
-  "name": "NEXUS 1re — Automatismes STI2D",
+  "name": "NEXUS 1re — Mathématiques STI2D",
   "short_name": "NEXUS 1re",
-  "description": "Jeu incrémental d'automatismes pour la première STI2D.",
+  "description": "Jeu incrémental de mathématiques pour la première STI2D : automatismes, logique, algorithmique, analyse, statistiques et probabilités.",
   "lang": "fr",
   "id": "./",
   "start_url": "./",

@@ -24,6 +24,9 @@ assert.match(styles, /touch-action:\s*pan-x pan-y/, "le défilement doit rester 
 assert.match(styles, /user-select:\s*none/, "la sélection de texte doit être désactivée");
 assert.match(html, /rel="manifest"/, "le manifeste d'installation doit être relié");
 assert.match(html, /rel="apple-touch-icon"/, "l'icône iPhone doit être reliée");
+assert.match(html, /NEXUS 1re — Mathématiques STI2D/, "le titre partagé doit refléter l'ensemble du programme");
+assert.match(html, /property="og:title" content="NEXUS 1re — Mathématiques STI2D"/, "l'aperçu des messageries doit porter le bon titre");
+assert.match(html, /og:description/, "l'aperçu des messageries doit décrire l'ensemble du jeu");
 assert.match(app, /serviceWorker\.register/, "le service worker doit être enregistré");
 assert.match(app, /AudioContext/, "les bruitages doivent être générés par le navigateur");
 assert.match(app, /gesturestart/, "les gestes de pincement iOS doivent être bloqués explicitement");

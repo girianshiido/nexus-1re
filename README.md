@@ -1,4 +1,4 @@
-# NEXUS 1re — Automatismes STI2D
+# NEXUS 1re — Mathématiques STI2D
 
 Prototype de jeu incrémental pédagogique destiné aux élèves de **première STI2D**. Le jeu génère ses questions à partir de modèles paramétrés : les nombres et les réponses changent à chaque partie.
 
