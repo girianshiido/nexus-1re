@@ -10,6 +10,8 @@
   const MAX_QUESTION_TIME = 20000;
   const OFFLINE_LIMIT = 4 * 60 * 60;
   const REPORT_LIMIT = 50;
+  const EVENT_WINDOW_MS = 30000;
+  const TABS = ["core", "workshops", "upgrades", "network"];
 
   const EVENT_TYPES = [
     {
@@ -41,6 +43,7 @@
     cycleRing: $("#cycle-ring"),
     cycleProgressText: $("#cycle-progress-text"),
     cycleProgressBar: $("#cycle-progress-bar"),
+    networkCycleProgressBar: $("#network-cycle-progress-bar"),
     cycleGain: $("#cycle-gain"),
     permanentMultiplier: $("#permanent-multiplier"),
     cycleButton: $("#cycle-button"),
@@ -61,19 +64,29 @@
     eventTitle: $("#event-title"),
     eventDescription: $("#event-description"),
     eventReward: $("#event-reward"),
+    eventTimeLabel: $("#event-time-label"),
+    eventTimeBar: $("#event-time-bar"),
     eventStart: $("#event-start"),
     eventCountdown: $("#event-countdown"),
     ownedTotal: $("#owned-total"),
-    correctTotal: $("#correct-total"),
     accuracy: $("#accuracy-value"),
     bestStreak: $("#best-streak"),
     activeEffect: $("#active-effect"),
     unlockedCount: $("#unlocked-count"),
     unlockedSkills: $("#unlocked-skills"),
     workshopList: $("#workshop-list"),
+    workshopUpgradeList: $("#workshop-upgrade-list"),
     helpButton: $("#help-button"),
     programmeButton: $("#programme-button"),
     soundButton: $("#sound-button"),
+    tabButtons: [...document.querySelectorAll("[data-tab]")],
+    views: [...document.querySelectorAll("[data-view]")],
+    cycleTabShortcut: $("#cycle-tab-shortcut"),
+    calibrationOpen: $("#calibration-open"),
+    calibrationOpenNetwork: $("#calibration-open-network"),
+    calibrationOpenUpgrades: $("#calibration-open-upgrades"),
+    calibrationDialog: $("#calibration-dialog"),
+    calibrationClose: $("#calibration-close"),
     helpDialog: $("#help-dialog"),
     programmeDialog: $("#programme-dialog"),
     programmeSummary: $("#programme-summary"),
@@ -141,6 +154,8 @@
       recentKeys: [],
       recentKinds: [],
       questionReports: [],
+      activeTab: "core",
+      workshopReveal: 1,
       lastSeen: Date.now()
     };
   }
@@ -164,6 +179,16 @@
       merged.recentKeys = Array.isArray(parsed.recentKeys) ? parsed.recentKeys.slice(-12) : [];
       merged.recentKinds = Array.isArray(parsed.recentKinds) ? parsed.recentKinds.slice(-2) : [];
       merged.questionReports = Array.isArray(parsed.questionReports) ? parsed.questionReports.slice(-REPORT_LIMIT) : [];
+      merged.activeTab = TABS.includes(parsed.activeTab) ? parsed.activeTab : "core";
+      if (Number.isFinite(parsed.workshopReveal)) {
+        merged.workshopReveal = Math.min(Model.WORKSHOPS.length - 1, Math.max(1, Math.floor(parsed.workshopReveal)));
+      } else {
+        const knownIndexes = Model.WORKSHOPS
+          .map((workshop, index) => ((merged.workshops[workshop.id] || 0) > 0 || (merged.mastery[workshop.id] || 0) > 0) ? index : -1)
+          .filter(index => index >= 0);
+        const highestKnown = knownIndexes.length ? Math.max(...knownIndexes) : 0;
+        merged.workshopReveal = Math.min(Model.WORKSHOPS.length - 1, Math.max(1, highestKnown + 1));
+      }
       return merged;
     } catch {
       return initial;
@@ -236,6 +261,31 @@
     dom.toast.classList.add("show");
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => dom.toast.classList.remove("show"), 2800);
+  }
+
+  function setActiveTab(tab, { moveToTop = true } = {}) {
+    if (!TABS.includes(tab)) return;
+    state.activeTab = tab;
+    dom.tabButtons.forEach(button => {
+      const active = button.dataset.tab === tab;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-selected", String(active));
+      button.tabIndex = active ? 0 : -1;
+    });
+    dom.views.forEach(view => {
+      const active = view.dataset.view === tab;
+      view.hidden = !active;
+      view.classList.toggle("active", active);
+    });
+    if (moveToTop) {
+      const top = Math.max(0, document.querySelector(".cycle-strip").getBoundingClientRect().bottom + window.scrollY - 8);
+      window.scrollTo({ top, behavior: "smooth" });
+    }
+    save();
+  }
+
+  function openCalibrationDialog() {
+    if (!dom.calibrationDialog.open) dom.calibrationDialog.showModal();
   }
 
   function questionReference(question) {
@@ -513,6 +563,11 @@
     const first = previousCount === 0;
     state.flux -= quote.cost;
     state.workshops[id] += quote.quantity;
+    const workshopIndex = Model.WORKSHOPS.findIndex(item => item.id === id);
+    const previousReveal = state.workshopReveal;
+    if (workshopIndex === state.workshopReveal && state.workshopReveal < Model.WORKSHOPS.length - 1) {
+      state.workshopReveal += 1;
+    }
     playSound("buy");
     if (first) {
       state.nextEventAt = Math.min(state.nextEventAt, now() + 12000);
@@ -522,8 +577,12 @@
     const nextUpgradeMilestone = Model.MILESTONES[state.workshopUpgrades[id] || 0];
     if (nextUpgradeMilestone && previousCount < nextUpgradeMilestone && count >= nextUpgradeMilestone) {
       showToast(`Palier ${nextUpgradeMilestone} atteint : une amélioration ×2 est disponible pour ${workshop.name}.`);
+    } else if (state.workshopReveal > previousReveal) {
+      const revealed = Model.WORKSHOPS[state.workshopReveal];
+      showToast(`Nouvel atelier découvert : ${revealed.name}.`);
     }
     renderWorkshops();
+    renderWorkshopUpgrades();
   }
 
   function buyWorkshopUpgrade(id) {
@@ -537,6 +596,7 @@
     playSound("buy");
     showToast(`${workshop.name} amélioré : sa production est doublée.`);
     renderWorkshops();
+    renderWorkshopUpgrades();
   }
 
   function calibrationEffect(id, level) {
@@ -576,10 +636,15 @@
     const type = EVENT_TYPES[Math.floor(Math.random() * EVENT_TYPES.length)];
     const maxTier = Math.max(...unlocked.map(workshop => workshop.tier));
     const questionCount = maxTier >= 7 ? 3 : maxTier >= 4 ? 2 : 1;
+    const baseReward = Math.max(120, baseProduction() * 60, clickValue() * 80);
+    const typeMultiplier = type.id === "cache" ? 1.5 : type.id === "surge" ? 0.9 : 1;
     pendingEvent = {
       ...type,
       skills: unlocked.map(workshop => workshop.id),
-      questionCount
+      questionCount,
+      fluxReward: Math.ceil(baseReward * typeMultiplier * (1 + (questionCount - 1) * 0.25)),
+      createdAt: now(),
+      expiresAt: now() + EVENT_WINDOW_MS
     };
     playSound("event");
   }
@@ -694,22 +759,22 @@
       return;
     }
     state.eventWins += 1;
+    const fluxGain = Math.ceil(run.event.fluxReward * (1 + run.fast * 0.25));
+    addFlux(fluxGain);
     if (run.event.id === "surge") {
       state.boostMultiplier = 2 + Math.min(1, run.fast * 0.25);
       state.boostUntil = now() + 45000;
-      showToast(`Réseau stabilisé : production ×${format(state.boostMultiplier)} pendant 45 s !`);
+      showToast(`+${format(fluxGain)} flux et production ×${format(state.boostMultiplier)} pendant 45 s !`);
       return;
     }
     if (run.event.id === "cache") {
-      const gain = Math.max(120, baseProduction() * 75, clickValue() * 80) * (1 + run.fast * 0.25);
-      addFlux(gain);
-      showToast(`Optimisation réussie : +${format(gain)} flux !`);
+      showToast(`Optimisation réussie : +${format(fluxGain)} flux !`);
       return;
     }
     const candidates = run.event.skills.filter(skill => (state.workshops[skill] || 0) > 0);
     const id = candidates[Math.floor(Math.random() * candidates.length)];
     state.workshops[id] += 1;
-    showToast(`Prototype validé : +1 ${Model.workshopById(id).name} !`);
+    showToast(`Prototype validé : +${format(fluxGain)} flux et +1 ${Model.workshopById(id).name} !`);
   }
 
   function advanceEvent() {
@@ -765,6 +830,7 @@
     scheduleNextEvent();
     save();
     renderWorkshops();
+    renderWorkshopUpgrades();
     renderCalibrationUpgrades();
     playSound("cycle");
     showToast(`Cycle ${state.cycle} lancé avec un multiplicateur permanent ×${format(permanentMultiplier())}.`);
@@ -777,6 +843,7 @@
     eventRun = null;
     currentQuestion = null;
     renderWorkshops();
+    renderWorkshopUpgrades();
     renderCalibrationUpgrades();
     save();
     showToast("Nouvelle partie créée.");
@@ -800,30 +867,53 @@
             <span id="milestone-${workshop.id}">Palier à 10</span>
           </div>
         </div>
-        <button class="workshop-buy" data-buy="${workshop.id}" type="button"><span>Acheter</span><small>${format(workshop.baseCost)} flux</small></button>
-        <button class="workshop-upgrade" data-upgrade="${workshop.id}" type="button"><span>Amélioration ×2</span><small>Débloquée au palier 10</small></button>`;
+        <button class="workshop-buy" data-buy="${workshop.id}" type="button"><span>Acheter</span><small>${format(workshop.baseCost)} flux</small></button>`;
       fragment.append(card);
     });
+    const teaser = document.createElement("article");
+    teaser.id = "next-workshop-teaser";
+    teaser.className = "next-workshop-teaser";
+    fragment.append(teaser);
     dom.workshopList.replaceChildren(fragment);
     dom.workshopList.addEventListener("click", event => {
-      const upgradeButton = event.target.closest("[data-upgrade]");
-      if (upgradeButton) {
-        buyWorkshopUpgrade(upgradeButton.dataset.upgrade);
-        return;
-      }
       const button = event.target.closest("[data-buy]");
       if (button) buyWorkshop(button.dataset.buy);
     });
   }
 
-  function renderWorkshops() {
+  function createWorkshopUpgradeCards() {
+    const fragment = document.createDocumentFragment();
     Model.WORKSHOPS.forEach(workshop => {
+      const card = document.createElement("article");
+      card.className = "upgrade-card";
+      card.dataset.workshopUpgradeCard = workshop.id;
+      card.innerHTML = `
+        <div class="workshop-icon" aria-hidden="true">${workshop.icon}</div>
+        <div class="upgrade-card-copy">
+          <h2>${workshop.name}</h2>
+          <p id="upgrade-status-${workshop.id}">Premier palier à 10 unités</p>
+          <small id="upgrade-effect-${workshop.id}">Multiplicateur actuel ×1</small>
+        </div>
+        <button class="workshop-upgrade" data-upgrade="${workshop.id}" type="button">
+          <span>Amélioration ×2</span><small>Débloquée au palier 10</small>
+        </button>`;
+      fragment.append(card);
+    });
+    dom.workshopUpgradeList.replaceChildren(fragment);
+    dom.workshopUpgradeList.addEventListener("click", event => {
+      const button = event.target.closest("[data-upgrade]");
+      if (button) buyWorkshopUpgrade(button.dataset.upgrade);
+    });
+  }
+
+  function renderWorkshops() {
+    Model.WORKSHOPS.forEach((workshop, index) => {
       const count = state.workshops[workshop.id] || 0;
       const card = dom.workshopList.querySelector(`[data-workshop="${workshop.id}"]`);
       if (!card) return;
+      card.hidden = index > state.workshopReveal;
       const quote = workshopQuote(workshop);
       const button = card.querySelector(".workshop-buy");
-      const upgradeButton = card.querySelector(".workshop-upgrade");
       const upgradeLevel = state.workshopUpgrades[workshop.id] || 0;
       const upgradeStatus = Model.workshopUpgradeStatus(workshop.id, count, upgradeLevel);
       const rate = Model.workshopProduction(workshop.id, count, state.mastery[workshop.id], upgradeLevel) * permanentMultiplier() * (isBoosted() ? state.boostMultiplier : 1);
@@ -840,13 +930,38 @@
       button.disabled = !quote.quantity;
       button.querySelector("span").textContent = quote.quantity ? `Acheter ×${quote.quantity}` : "Acheter";
       button.querySelector("small").textContent = quote.quantity ? `${format(quote.cost)} flux` : `${format(Model.workshopCost(workshop.id, count))} flux`;
-      upgradeButton.hidden = upgradeStatus.completed;
-      upgradeButton.disabled = !upgradeStatus.unlocked || upgradeStatus.cost > state.flux;
-      upgradeButton.classList.toggle("ready", upgradeStatus.unlocked && upgradeStatus.cost <= state.flux);
-      upgradeButton.querySelector("span").textContent = upgradeStatus.unlocked ? `Doubler · niveau ${upgradeLevel + 1}` : `Amélioration ×2`;
-      upgradeButton.querySelector("small").textContent = upgradeStatus.unlocked
-        ? `${format(upgradeStatus.cost)} flux`
-        : `Débloquée au palier ${upgradeStatus.milestone}`;
+    });
+    const teaser = dom.workshopList.querySelector("#next-workshop-teaser");
+    const next = Model.WORKSHOPS[state.workshopReveal + 1];
+    teaser.hidden = !next;
+    if (next) {
+      const gate = Model.WORKSHOPS[state.workshopReveal];
+      teaser.innerHTML = `<span aria-hidden="true">?</span><div><strong>Prochain atelier à découvrir</strong><p>Achète ${gate.name} pour révéler la suite du réseau.</p></div>`;
+    }
+  }
+
+  function renderWorkshopUpgrades() {
+    Model.WORKSHOPS.forEach((workshop, index) => {
+      const count = state.workshops[workshop.id] || 0;
+      const level = state.workshopUpgrades[workshop.id] || 0;
+      const status = Model.workshopUpgradeStatus(workshop.id, count, level);
+      const card = dom.workshopUpgradeList.querySelector(`[data-workshop-upgrade-card="${workshop.id}"]`);
+      if (!card) return;
+      card.hidden = index > state.workshopReveal;
+      const button = card.querySelector(".workshop-upgrade");
+      card.classList.toggle("available", status.unlocked && !status.completed);
+      card.classList.toggle("completed", status.completed);
+      card.querySelector(`#upgrade-effect-${workshop.id}`).textContent = `Multiplicateur actuel ×${Math.pow(2, level)}`;
+      card.querySelector(`#upgrade-status-${workshop.id}`).textContent = status.completed
+        ? "Tous les paliers ont été financés"
+        : status.unlocked
+          ? `Palier ${status.milestone} atteint avec ${count} unités`
+          : `Prochain palier : ${count}/${status.milestone} unités`;
+      button.hidden = status.completed;
+      button.disabled = !status.unlocked || status.cost > state.flux;
+      button.classList.toggle("ready", status.unlocked && status.cost <= state.flux);
+      button.querySelector("span").textContent = status.unlocked ? `Doubler · niveau ${level + 1}` : "Amélioration ×2";
+      button.querySelector("small").textContent = status.unlocked ? `${format(status.cost)} flux` : `Débloquée au palier ${status.milestone}`;
     });
   }
 
@@ -888,15 +1003,34 @@
   }
 
   function renderEvent(nowValue) {
+    if (pendingEvent && !eventRun && nowValue >= pendingEvent.expiresAt) {
+      pendingEvent = null;
+      scheduleNextEvent();
+      showToast("La perturbation s'est dissipée. Un nouveau signal apparaîtra plus tard.");
+    }
     if (!pendingEvent && nowValue >= state.nextEventAt && !eventRun) createPendingEvent();
     const visibleEvent = eventRun?.event || pendingEvent;
     dom.eventCard.hidden = !visibleEvent;
     if (visibleEvent) {
       dom.eventTitle.textContent = visibleEvent.title;
       dom.eventDescription.textContent = visibleEvent.description;
-      dom.eventReward.textContent = visibleEvent.preview;
+      const bonus = visibleEvent.id === "surge"
+        ? " · production ×2 pendant 45 s"
+        : visibleEvent.id === "prototype"
+          ? " · +1 atelier"
+          : "";
+      dom.eventReward.textContent = `Si réussi : +${format(visibleEvent.fluxReward)} flux${bonus}`;
       dom.eventStart.textContent = eventRun ? "Reprendre" : "Intervenir";
-      dom.eventCountdown.textContent = eventRun ? "Intervention en cours — le noyau continue de produire." : "La perturbation attend ton intervention ; tu peux continuer à produire.";
+      if (eventRun) {
+        dom.eventTimeLabel.textContent = "En cours";
+        dom.eventTimeBar.style.width = "100%";
+        dom.eventCountdown.textContent = "Intervention en cours — le laboratoire continue de produire.";
+      } else {
+        const remaining = Math.max(0, visibleEvent.expiresAt - nowValue);
+        dom.eventTimeLabel.textContent = `${Math.ceil(remaining / 1000)} s`;
+        dom.eventTimeBar.style.width = `${remaining / EVENT_WINDOW_MS * 100}%`;
+        dom.eventCountdown.textContent = `Signal actif encore ${Math.ceil(remaining / 1000)} s.`;
+      }
       return;
     }
     const unlocked = unlockedWorkshops();
@@ -935,7 +1069,9 @@
     dom.cycle.textContent = state.cycle;
     dom.cycleRing.textContent = state.cycle;
     dom.cycleProgressText.textContent = `${format(state.cycleFlux)} / ${format(cycleTarget)}`;
-    dom.cycleProgressBar.style.width = `${Math.min(100, state.cycleFlux / cycleTarget * 100)}%`;
+    const cycleProgress = `${Math.min(100, state.cycleFlux / cycleTarget * 100)}%`;
+    dom.cycleProgressBar.style.width = cycleProgress;
+    dom.networkCycleProgressBar.style.width = cycleProgress;
     dom.cycleGain.textContent = plural(cycleGain, "point");
     dom.permanentMultiplier.textContent = `Production permanente ×${format(permanentMultiplier())}`;
     dom.cycleButton.disabled = cycleGain < 1;
@@ -965,7 +1101,6 @@
     }
 
     dom.ownedTotal.textContent = owned;
-    dom.correctTotal.textContent = state.totalCorrect;
     dom.accuracy.textContent = state.totalAnswered ? `${Math.round(state.totalCorrect / state.totalAnswered * 100)} %` : "—";
     dom.bestStreak.textContent = state.bestStreak;
     if (hyper) dom.activeEffect.textContent = `Hypercadence · ${Math.ceil((state.hyperUntil - nowValue) / 1000)} s`;
@@ -996,6 +1131,7 @@
     if (timestamp - lastRender > 100) {
       render();
       renderWorkshops();
+      renderWorkshopUpgrades();
       lastRender = timestamp;
     }
     if (timestamp - lastSave > 3000) {
@@ -1015,6 +1151,12 @@
     save();
   });
   dom.eventStart.addEventListener("click", startEvent);
+  dom.tabButtons.forEach(button => button.addEventListener("click", () => setActiveTab(button.dataset.tab)));
+  dom.cycleTabShortcut.addEventListener("click", () => setActiveTab("network"));
+  dom.calibrationOpen.addEventListener("click", openCalibrationDialog);
+  dom.calibrationOpenNetwork.addEventListener("click", openCalibrationDialog);
+  dom.calibrationOpenUpgrades.addEventListener("click", openCalibrationDialog);
+  dom.calibrationClose.addEventListener("click", () => dom.calibrationDialog.close());
   dom.eventClose.addEventListener("click", () => dom.eventDialog.close());
   dom.eventNext.addEventListener("click", advanceEvent);
   dom.reportQuestion.addEventListener("click", reportCurrentQuestion);
@@ -1044,11 +1186,14 @@
   installTouchGuards();
   createProgrammeCoverage();
   createWorkshopCards();
+  createWorkshopUpgradeCards();
   createCalibrationCards();
+  setActiveTab(state.activeTab, { moveToTop: false });
   updateSoundButton();
   document.querySelectorAll(".bulk-button").forEach(button => button.classList.toggle("active", button.dataset.bulk === String(state.bulk)));
   applyOfflineProgress();
   renderWorkshops();
+  renderWorkshopUpgrades();
   renderCalibrationUpgrades();
   render();
   showToast("Clique sur le noyau pour produire tes premiers flux.");

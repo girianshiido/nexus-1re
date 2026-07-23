@@ -13,7 +13,7 @@
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon-64.png">
     <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
-    <link rel="stylesheet" href="styles.css?v=8">
+    <link rel="stylesheet" href="styles.css?v=10">
   </head>
   <body>
     <div class="ambient ambient-a"></div>
@@ -27,8 +27,6 @@
       <div class="top-stats" aria-label="Statistiques de la partie">
         <div class="stat main-stat"><span>Flux disponible</span><strong id="flux-value">0</strong></div>
         <div class="stat"><span>Production</span><strong id="production-value">0/s</strong></div>
-        <div class="stat"><span>Étalonnage</span><strong id="calibration-value">0 pt</strong></div>
-        <div class="stat"><span>Cycle</span><strong id="cycle-value">1</strong></div>
       </div>
       <div class="top-actions">
         <button class="icon-button" id="sound-button" type="button" aria-label="Désactiver les sons" aria-pressed="true">♪</button>
@@ -37,38 +35,52 @@
       </div>
     </header>
 
+    <nav class="game-tabs" aria-label="Sections du laboratoire" role="tablist">
+      <button class="game-tab active" id="tab-core" data-tab="core" type="button" role="tab" aria-selected="true" aria-controls="view-core">
+        <span aria-hidden="true">◉</span><strong>Noyau</strong>
+      </button>
+      <button class="game-tab" id="tab-workshops" data-tab="workshops" type="button" role="tab" aria-selected="false" aria-controls="view-workshops">
+        <span aria-hidden="true">▦</span><strong>Ateliers</strong>
+      </button>
+      <button class="game-tab" id="tab-upgrades" data-tab="upgrades" type="button" role="tab" aria-selected="false" aria-controls="view-upgrades">
+        <span aria-hidden="true">⬆</span><strong>Améliorations</strong>
+      </button>
+      <button class="game-tab" id="tab-network" data-tab="network" type="button" role="tab" aria-selected="false" aria-controls="view-network">
+        <span aria-hidden="true">⌁</span><strong>Réseau</strong>
+      </button>
+    </nav>
+
+    <section class="cycle-strip" aria-label="Progression du cycle">
+      <button class="cycle-strip-main" id="cycle-tab-shortcut" type="button" aria-label="Afficher le réseau">
+        <span class="cycle-strip-label">Cycle <b id="cycle-value">1</b></span>
+        <span class="cycle-strip-progress">
+          <span class="cycle-strip-copy"><b id="cycle-progress-text">0 / 50 k</b><small id="cycle-gain">0 point</small></span>
+          <span class="progress-track"><span id="cycle-progress-bar"></span></span>
+        </span>
+      </button>
+      <button id="calibration-open" class="cycle-strip-action" type="button">
+        <span id="calibration-value">0 pt</span><strong>Protocoles</strong>
+      </button>
+    </section>
+
+    <article id="event-card" class="event-card" hidden aria-live="polite">
+      <div class="event-signal" aria-hidden="true">!</div>
+      <div class="event-copy">
+        <p class="eyebrow">Perturbation détectée</p>
+        <h2 id="event-title">Surcharge du réseau</h2>
+        <p id="event-description"></p>
+        <strong id="event-reward"></strong>
+      </div>
+      <div class="event-deadline">
+        <span id="event-time-label">30 s</span>
+        <span class="event-time-track"><span id="event-time-bar"></span></span>
+      </div>
+      <button id="event-start" class="primary-button" type="button">Intervenir</button>
+    </article>
+
     <main id="jeu" class="game-shell">
-      <aside class="progress-panel panel">
-        <div class="panel-heading">
-          <p class="eyebrow">Réseau pédagogique</p>
-          <h2>Cycle d'étalonnage</h2>
-        </div>
-        <div class="cycle-visual" aria-hidden="true"><span id="cycle-ring">1</span></div>
-        <p class="cycle-copy">Reconfigure le laboratoire pour gagner des points permanents, sans perdre ta maîtrise mathématique.</p>
-        <div class="cycle-progress-label"><span>Flux du cycle</span><b id="cycle-progress-text">0 / 50 k</b></div>
-        <div class="progress-track"><span id="cycle-progress-bar"></span></div>
-        <div class="cycle-reward">
-          <small>Récompense actuelle</small>
-          <strong id="cycle-gain">0 point</strong>
-          <span id="permanent-multiplier">Production permanente ×1</span>
-        </div>
-        <button id="cycle-button" class="secondary-button full-button" type="button" disabled>Étalonner le réseau</button>
-
-        <div class="calibration-lab">
-          <div class="calibration-lab-head">
-            <div><p class="eyebrow">Améliorations permanentes</p><strong>Protocoles du Noyau</strong></div>
-            <span id="calibration-available">0 pt disponible</span>
-          </div>
-          <div id="calibration-upgrade-list" class="calibration-upgrade-list"></div>
-        </div>
-
-        <div class="mastery-summary">
-          <div><p class="eyebrow">Acquis conservés</p><b id="mastery-total">0</b></div>
-          <p>Chaque bonne réponse renforce l'atelier concerné.</p>
-        </div>
-      </aside>
-
-      <section class="core-panel panel" aria-labelledby="core-title">
+      <section id="view-core" class="game-view core-view active" data-view="core" role="tabpanel" aria-labelledby="tab-core">
+        <section class="core-panel panel" aria-labelledby="core-title">
         <div class="core-heading">
           <div>
             <p class="eyebrow">Production manuelle</p>
@@ -100,48 +112,16 @@
           </div>
           <div class="cadence-track"><span id="cadence-bar"></span></div>
         </div>
-
-        <article id="event-card" class="event-card" hidden>
-          <div class="event-signal" aria-hidden="true">!</div>
-          <div>
-            <p class="eyebrow">Perturbation détectée</p>
-            <h2 id="event-title">Surcharge du réseau</h2>
-            <p id="event-description"></p>
-            <small id="event-reward"></small>
-          </div>
-          <button id="event-start" class="primary-button" type="button">Intervenir</button>
-        </article>
-        <div id="event-countdown" class="event-countdown">Première perturbation dans environ 25 s.</div>
+        </section>
       </section>
 
-      <aside class="status-panel panel">
-        <div class="panel-heading">
-          <p class="eyebrow">Tableau de contrôle</p>
-          <h2>État du laboratoire</h2>
-        </div>
-        <div class="status-grid">
-          <div><span>Ateliers</span><strong id="owned-total">0</strong></div>
-          <div><span>Réponses justes</span><strong id="correct-total">0</strong></div>
-          <div><span>Précision</span><strong id="accuracy-value">—</strong></div>
-          <div><span>Meilleure série</span><strong id="best-streak">0</strong></div>
-        </div>
-        <div class="active-effect">
-          <span class="effect-icon" aria-hidden="true">⚡</span>
-          <div><small>Effet temporaire</small><strong id="active-effect">Aucun</strong></div>
-        </div>
-        <div class="unlocked-box">
-          <div class="unlocked-head"><strong>Notions actives</strong><span id="unlocked-count">0/12</span></div>
-          <div id="unlocked-skills" class="unlocked-skills"><span class="empty-chip">Achète un atelier</span></div>
-        </div>
-        <p class="status-note">Les perturbations utilisent uniquement les notions dont tu possèdes au moins un atelier.</p>
-      </aside>
-
-      <section class="shop-panel panel" aria-labelledby="shop-title">
+      <section id="view-workshops" class="game-view workshops-view" data-view="workshops" role="tabpanel" aria-labelledby="tab-workshops" hidden>
+        <section class="shop-panel panel" aria-labelledby="shop-title">
         <div class="shop-heading">
           <div>
             <p class="eyebrow">Production passive</p>
             <h2 id="shop-title">Ateliers mathématiques</h2>
-            <p>Chaque unité produit du flux. Les paliers 10, 25, 50… débloquent des améliorations ×2 à financer.</p>
+            <p>Chaque unité produit du flux. Les paliers débloquent des bonus ×2 dans l'onglet Améliorations.</p>
           </div>
           <div class="bulk-picker" aria-label="Quantité à acheter">
             <button class="bulk-button active" data-bulk="1" type="button">×1</button>
@@ -150,21 +130,64 @@
           </div>
         </div>
         <div id="workshop-list" class="workshop-list"></div>
+        </section>
+      </section>
+
+      <section id="view-upgrades" class="game-view upgrades-view" data-view="upgrades" role="tabpanel" aria-labelledby="tab-upgrades" hidden>
+        <section class="upgrades-panel panel" aria-labelledby="upgrades-title">
+          <div class="upgrades-heading">
+            <div>
+              <p class="eyebrow">Optimisation du laboratoire</p>
+              <h1 id="upgrades-title">Améliorations</h1>
+              <p>Les paliers atteints dans les ateliers rendent disponibles des multiplicateurs permanents pour le cycle en cours.</p>
+            </div>
+            <button id="calibration-open-upgrades" class="secondary-button" type="button">Protocoles permanents</button>
+          </div>
+          <div id="workshop-upgrade-list" class="workshop-upgrade-list"></div>
+        </section>
+      </section>
+
+      <section id="view-network" class="game-view network-view" data-view="network" role="tabpanel" aria-labelledby="tab-network" hidden>
+        <section class="network-panel panel" aria-labelledby="network-title">
+          <div class="network-heading">
+            <div>
+              <p class="eyebrow">Progression permanente</p>
+              <h1 id="network-title">Réseau pédagogique</h1>
+              <p>Étalonne le laboratoire quand le cycle est assez avancé. La maîtrise et les protocoles acquis sont conservés.</p>
+            </div>
+            <button id="calibration-open-network" class="secondary-button" type="button">Ouvrir les protocoles</button>
+          </div>
+
+          <div class="network-cycle">
+            <div class="network-cycle-head">
+              <span>Cycle <b id="cycle-ring">1</b></span>
+              <strong id="permanent-multiplier">Production permanente ×1</strong>
+            </div>
+            <div class="progress-track network-progress"><span id="network-cycle-progress-bar"></span></div>
+            <button id="cycle-button" class="primary-button" type="button" disabled>Étalonner le réseau</button>
+          </div>
+
+          <div class="network-summary">
+            <article><span>Ateliers actifs</span><strong id="owned-total">0</strong></article>
+            <article><span>Acquis conservés</span><strong id="mastery-total">0</strong></article>
+            <article><span>Précision</span><strong id="accuracy-value">—</strong></article>
+            <article><span>Meilleure série</span><strong id="best-streak">0</strong></article>
+          </div>
+
+          <div class="network-detail">
+            <div class="active-effect">
+              <span class="effect-icon" aria-hidden="true">⚡</span>
+              <div><small>Effet temporaire</small><strong id="active-effect">Aucun</strong></div>
+            </div>
+            <div class="unlocked-box">
+              <div class="unlocked-head"><strong>Notions actives</strong><span id="unlocked-count">0/12</span></div>
+              <div id="unlocked-skills" class="unlocked-skills"><span class="empty-chip">Achète un atelier</span></div>
+            </div>
+          </div>
+          <p id="event-countdown" class="event-countdown">Première perturbation dans environ 25 s.</p>
+        </section>
       </section>
     </main>
-
-    <section class="roadmap panel" aria-labelledby="roadmap-title">
-      <div>
-        <p class="eyebrow">Boucle de progression</p>
-        <h2 id="roadmap-title">Produire, apprendre, recommencer plus vite</h2>
-      </div>
-      <div class="roadmap-items">
-        <article><span>01</span><div><strong>Activer</strong><small>Cliquer et déclencher l'Hypercadence</small></div></article>
-        <article><span>02</span><div><strong>Construire</strong><small>Acheter des ateliers et leurs améliorations</small></div></article>
-        <article><span>03</span><div><strong>Intervenir</strong><small>Résoudre des perturbations occasionnelles</small></div></article>
-        <article><span>∞</span><div><strong>Étalonner</strong><small>Relancer avec un bonus permanent</small></div></article>
-      </div>
-    </section>
 
     <footer>
       <span>Programme de première technologique · BO du 2 avril 2026</span>
@@ -199,8 +222,9 @@
         <h2>Le laboratoire apprend avec toi</h2>
         <ol>
           <li><b>Clique régulièrement sur le noyau</b> pour charger l'Hypercadence. Sa jauge redescend rapidement si tu t'arrêtes.</li>
-          <li><b>Achète des ateliers</b> : ils produisent continuellement et leurs paliers débloquent des améliorations à financer.</li>
-          <li><b>Interviens lors des perturbations</b>. Elles sont occasionnelles et choisissent des questions générées parmi les notions achetées.</li>
+          <li><b>Change d'onglet</b> pour acheter des ateliers, financer leurs améliorations ou suivre le réseau sans encombrer le noyau.</li>
+          <li><b>Découvre les ateliers progressivement</b> : le suivant apparaît lorsque tu achètes le dernier atelier accessible.</li>
+          <li><b>Interviens lors des perturbations</b>. Leur bandeau indique le flux à gagner et disparaît si tu laisses le compte à rebours se terminer.</li>
           <li><b>Étalonne le réseau</b> lorsque la production ralentit : tu conserves ta maîtrise et dépenses les points gagnés dans des protocoles permanents.</li>
         </ol>
         <p class="dialog-note">Répondre vite améliore la récompense, mais une réponse juste reste toujours utile. Une erreur ne retire jamais de flux.</p>
@@ -221,6 +245,18 @@
       </form>
     </dialog>
 
+    <dialog id="calibration-dialog">
+      <div class="dialog-card calibration-dialog-card">
+        <button id="calibration-close" class="dialog-close" type="button" aria-label="Fermer">×</button>
+        <div class="calibration-lab-head">
+          <div><p class="eyebrow">Améliorations permanentes</p><h2>Protocoles du Noyau</h2></div>
+          <span id="calibration-available">0 pt disponible</span>
+        </div>
+        <p class="programme-summary">Ces améliorations restent actives après un étalonnage. Choisis entre puissance de clic, Hypercadence et impulsions automatiques.</p>
+        <div id="calibration-upgrade-list" class="calibration-upgrade-list"></div>
+      </div>
+    </dialog>
+
     <dialog id="confirm-dialog">
       <form method="dialog" class="dialog-card compact-dialog">
         <p class="eyebrow" id="confirm-kicker">Confirmation</p>
@@ -235,8 +271,8 @@
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-    <script src="question-engine.js?v=8"></script>
+    <script src="question-engine.js?v=9"></script>
     <script src="game-model.js?v=3"></script>
-    <script src="app.js?v=9"></script>
+    <script src="app.js?v=12"></script>
   </body>
 </html>

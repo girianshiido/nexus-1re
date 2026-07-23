@@ -293,9 +293,11 @@
       skill: "logic",
       prompt: useAnd
         ? `Quelle paire vérifie la condition « x > ${thresholdA} ET y < ${thresholdB} » ?`
-        : `Quelle paire vérifie « x > ${thresholdA} OU y < ${thresholdB} » grâce uniquement à la condition sur y ?`,
+        : `Pour quelle paire la condition x > ${thresholdA} est-elle fausse et la condition y < ${thresholdB} vraie ?`,
       choices, answer,
-      explanation: `${good} ${useAnd ? "vérifie simultanément les deux conditions" : "vérifie une seule des deux conditions, ce qui suffit avec OU"}.`
+      explanation: useAnd
+        ? `${good} vérifie simultanément les deux conditions.`
+        : `${good} rend x > ${thresholdA} fausse et y < ${thresholdB} vraie. L'affirmation avec OU est donc vraie grâce à sa seconde condition.`
     };
   }
 

@@ -33,6 +33,10 @@ assert.match(app, /buyWorkshopUpgrade/, "les améliorations d'atelier doivent ê
 assert.match(app, /buyCalibrationUpgrade/, "les points d'étalonnage doivent financer des améliorations permanentes");
 assert.match(app, /createProgrammeCoverage/, "la grille du programme 2026 doit être affichée dans le jeu");
 assert.match(app, /renderQuestionCanvases/, "les lectures graphiques doivent être dessinées dans le navigateur");
+assert.equal((html.match(/role="tab"/g) || []).length, 4, "quatre onglets doivent séparer le noyau, les ateliers, les améliorations et le réseau");
+assert.match(app, /EVENT_WINDOW_MS/, "les perturbations doivent avoir une durée de disponibilité limitée");
+assert.match(app, /workshopReveal/, "les ateliers doivent être révélés progressivement");
+assert.match(styles, /#event-next:not\(\[hidden\]\)[^]*position:\s*fixed/, "l'action de fin d'intervention doit rester visible");
 assert.match(html, /Programme de première technologique 2026/, "le dialogue de couverture 2026 doit être présent");
 assert.match(html, /0\/12/, "les douze ateliers doivent être annoncés dès le chargement");
 assert.match(serviceWorker, /event\.request\.mode === "navigate"/, "les navigations de l'application installée doivent être actualisées en priorité");
