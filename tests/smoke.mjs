@@ -4,11 +4,12 @@ import engine from "../question-engine.js";
 const worlds = ["energy", "factory", "data"];
 
 for (const world of worlds) {
-  for (let i = 0; i < 300; i += 1) {
+  for (let i = 0; i < 500; i += 1) {
     const question = engine.generate(world, {});
+    assert.ok(engine.validateQuestion(question).valid, `${world}: ${engine.validateQuestion(question).errors.join(", ")}`);
     assert.ok(question.prompt.length > 10, `${world}: énoncé manquant`);
     assert.equal(question.choices.length, 4, `${world}: quatre choix attendus`);
-    assert.equal(new Set(question.choices).size, 4, `${world}: choix dupliqués`);
+    assert.equal(new Set(question.choices.map(engine.canonicalChoice)).size, 4, `${world}: choix équivalents`);
     assert.ok(question.answer >= 0 && question.answer < 4, `${world}: index de réponse invalide`);
     assert.ok(question.explanation.length > 10, `${world}: correction manquante`);
     assert.ok(engine.SKILLS[question.skill], `${world}: compétence inconnue`);
@@ -37,6 +38,16 @@ const normalizePair = choice => {
   return pair ? pair.slice(1).map(Number).sort((a, b) => a - b).join("|") : choice;
 };
 assert.equal(new Set(symmetricProduct.choices.map(normalizePair)).size, 4, "les solutions inversées ne doivent pas être proposées deux fois");
+
+const invalidEquivalentQuestion = {
+  kind: "test-equivalence",
+  skill: "algebra",
+  prompt: "Résoudre une équation produit pour ce test.",
+  choices: ["x = -5 ou x = 5", "x = 5 ou x = -5", "x = 0", "x = 25"],
+  answer: 0,
+  explanation: "Les deux facteurs donnent les deux solutions attendues."
+};
+assert.equal(engine.validateQuestion(invalidEquivalentQuestion).valid, false, "le validateur doit détecter deux réponses équivalentes");
 
 const conversionRandomValues = [0.9, 0.3, 0, 0.5, 0.5, 0.5];
 const preciseConversion = engine.SKILL_GENERATORS.units[0](() => conversionRandomValues.shift() ?? 0.5);
@@ -82,12 +93,12 @@ for (let i = 0; i < 500; i += 1) {
 }
 
 for (const skill of Object.keys(engine.SKILL_GENERATORS)) {
-  for (let i = 0; i < 100; i += 1) {
+  for (let i = 0; i < 200; i += 1) {
     const question = engine.generateForSkills([skill], {});
     assert.equal(question.skill, skill, `${skill}: la question doit venir de la notion achetée`);
     assert.equal(question.choices.length, 4, `${skill}: quatre choix attendus`);
-    assert.equal(new Set(question.choices).size, 4, `${skill}: choix dupliqués`);
+    assert.equal(new Set(question.choices.map(engine.canonicalChoice)).size, 4, `${skill}: choix équivalents`);
   }
 }
 
-console.log("1800 questions générées et validées.");
+console.log("3300 questions générées et validées.");

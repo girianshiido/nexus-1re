@@ -28,6 +28,9 @@ assert.match(app, /AudioContext/, "les bruitages doivent être générés par le
 assert.match(app, /gesturestart/, "les gestes de pincement iOS doivent être bloqués explicitement");
 assert.match(app, /touches\.length > 1/, "les mouvements à plusieurs doigts doivent être bloqués");
 assert.match(app, /isDoubleTap/, "le double tap iOS doit être intercepté sans bloquer le défilement");
+assert.match(app, /questionReports/, "les questions signalées doivent être mémorisées localement");
+assert.match(app, /buyWorkshopUpgrade/, "les améliorations d'atelier doivent être achetables");
+assert.match(app, /buyCalibrationUpgrade/, "les points d'étalonnage doivent financer des améliorations permanentes");
 assert.match(serviceWorker, /event\.request\.mode === "navigate"/, "les navigations de l'application installée doivent être actualisées en priorité");
 assert.match(serviceWorker, /cache: "reload"/, "le cache HTTP ne doit pas masquer les mises à jour installées");
 

@@ -13,7 +13,7 @@
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon-64.png">
     <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
-    <link rel="stylesheet" href="styles.css?v=6">
+    <link rel="stylesheet" href="styles.css?v=7">
   </head>
   <body>
     <div class="ambient ambient-a"></div>
@@ -52,6 +52,14 @@
           <span id="permanent-multiplier">Production permanente ×1</span>
         </div>
         <button id="cycle-button" class="secondary-button full-button" type="button" disabled>Étalonner le réseau</button>
+
+        <div class="calibration-lab">
+          <div class="calibration-lab-head">
+            <div><p class="eyebrow">Améliorations permanentes</p><strong>Protocoles du Noyau</strong></div>
+            <span id="calibration-available">0 pt disponible</span>
+          </div>
+          <div id="calibration-upgrade-list" class="calibration-upgrade-list"></div>
+        </div>
 
         <div class="mastery-summary">
           <div><p class="eyebrow">Acquis conservés</p><b id="mastery-total">0</b></div>
@@ -132,7 +140,7 @@
           <div>
             <p class="eyebrow">Production passive</p>
             <h2 id="shop-title">Ateliers mathématiques</h2>
-            <p>Chaque unité produit du flux. Les paliers 10, 25, 50… doublent la puissance de l'atelier.</p>
+            <p>Chaque unité produit du flux. Les paliers 10, 25, 50… débloquent des améliorations ×2 à financer.</p>
           </div>
           <div class="bulk-picker" aria-label="Quantité à acheter">
             <button class="bulk-button active" data-bulk="1" type="button">×1</button>
@@ -151,7 +159,7 @@
       </div>
       <div class="roadmap-items">
         <article><span>01</span><div><strong>Activer</strong><small>Cliquer et déclencher l'Hypercadence</small></div></article>
-        <article><span>02</span><div><strong>Construire</strong><small>Acheter des ateliers producteurs</small></div></article>
+        <article><span>02</span><div><strong>Construire</strong><small>Acheter des ateliers et leurs améliorations</small></div></article>
         <article><span>03</span><div><strong>Intervenir</strong><small>Résoudre des perturbations occasionnelles</small></div></article>
         <article><span>∞</span><div><strong>Étalonner</strong><small>Relancer avec un bonus permanent</small></div></article>
       </div>
@@ -175,6 +183,10 @@
         <p id="question-text" class="question-text"></p>
         <div id="answers" class="answers"></div>
         <div id="feedback" class="feedback" aria-live="polite" hidden></div>
+        <div class="question-tools">
+          <button id="report-question" class="text-button" type="button">Signaler cette question</button>
+          <small id="question-reference"></small>
+        </div>
         <button id="event-next" class="primary-button full-button" type="button" hidden>Question suivante</button>
       </div>
     </dialog>
@@ -185,10 +197,10 @@
         <p class="eyebrow">Comment jouer</p>
         <h2>Le laboratoire apprend avec toi</h2>
         <ol>
-          <li><b>Clique sur le noyau</b> pour produire tes premiers flux. Tous les 40 clics, l'Hypercadence renforce les clics et ajoute des impulsions automatiques pendant 10 secondes.</li>
-          <li><b>Achète des ateliers</b> : ils produisent continuellement et débloquent leur notion mathématique.</li>
+          <li><b>Clique régulièrement sur le noyau</b> pour charger l'Hypercadence. Sa jauge redescend rapidement si tu t'arrêtes.</li>
+          <li><b>Achète des ateliers</b> : ils produisent continuellement et leurs paliers débloquent des améliorations à financer.</li>
           <li><b>Interviens lors des perturbations</b>. Elles sont occasionnelles et choisissent des questions générées parmi les notions achetées.</li>
-          <li><b>Étalonne le réseau</b> lorsque la production ralentit : tu recommences avec un bonus permanent et conserves ta maîtrise.</li>
+          <li><b>Étalonne le réseau</b> lorsque la production ralentit : tu conserves ta maîtrise et dépenses les points gagnés dans des protocoles permanents.</li>
         </ol>
         <p class="dialog-note">Répondre vite améliore la récompense, mais une réponse juste reste toujours utile. Une erreur ne retire jamais de flux.</p>
         <button class="primary-button full-button" value="close">J'ai compris</button>
@@ -209,8 +221,8 @@
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-    <script src="question-engine.js?v=6"></script>
-    <script src="game-model.js?v=1"></script>
-    <script src="app.js?v=7"></script>
+    <script src="question-engine.js?v=7"></script>
+    <script src="game-model.js?v=2"></script>
+    <script src="app.js?v=8"></script>
   </body>
 </html>

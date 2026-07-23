@@ -18,6 +18,14 @@
   ];
 
   const MILESTONES = [10, 25, 50, 100, 200];
+  const WORKSHOP_UPGRADE_SECONDS = [90, 180, 360, 720, 1440];
+  const CALIBRATION_UPGRADES = [
+    { id: "corePower", name: "Noyau renforcé", icon: "+", costs: [1, 2, 4, 7], description: "+25 % de flux par clic et par niveau." },
+    { id: "hyperPower", name: "Amplificateur", icon: "×", costs: [1, 2, 3, 5, 8, 12], description: "+0,5 au multiplicateur d'Hypercadence." },
+    { id: "hyperStability", name: "Condensateur", icon: "≈", costs: [1, 2, 4, 7], description: "La charge se dissipe moins rapidement." },
+    { id: "hyperDuration", name: "Rotor temporel", icon: "s", costs: [1, 2, 4, 7], description: "+1,5 seconde d'Hypercadence." },
+    { id: "hyperPulses", name: "Impulsions fantômes", icon: "⚡", costs: [1, 3, 5, 9], description: "+1 impulsion automatique par seconde." }
+  ];
 
   function workshopById(id) {
     return WORKSHOPS.find(workshop => workshop.id === id);
@@ -42,26 +50,51 @@
     return { quantity, cost };
   }
 
-  function milestoneMultiplier(count) {
-    return Math.pow(2, MILESTONES.filter(milestone => count >= milestone).length);
+  function unlockedMilestoneCount(count) {
+    return MILESTONES.filter(milestone => count >= milestone).length;
+  }
+
+  function milestoneMultiplier(count, purchasedUpgrades = 0) {
+    return Math.pow(2, Math.min(unlockedMilestoneCount(count), Math.max(0, purchasedUpgrades)));
   }
 
   function nextMilestone(count) {
     return MILESTONES.find(milestone => count < milestone) || null;
   }
 
-  function workshopProduction(id, count, mastery = 0) {
+  function workshopUpgradeCost(id, upgradeLevel = 0) {
+    const workshop = workshopById(id);
+    const milestone = MILESTONES[upgradeLevel];
+    const seconds = WORKSHOP_UPGRADE_SECONDS[upgradeLevel];
+    if (!workshop || !milestone || !seconds) return Infinity;
+    const productionBeforeUpgrade = workshop.baseRate * milestone * Math.pow(2, upgradeLevel);
+    return Math.ceil(productionBeforeUpgrade * seconds);
+  }
+
+  function workshopUpgradeStatus(id, count, upgradeLevel = 0) {
+    const milestone = MILESTONES[upgradeLevel] || null;
+    return {
+      level: upgradeLevel,
+      milestone,
+      unlocked: milestone !== null && count >= milestone,
+      completed: milestone === null,
+      cost: milestone === null ? Infinity : workshopUpgradeCost(id, upgradeLevel)
+    };
+  }
+
+  function workshopProduction(id, count, mastery = 0, upgradeLevel = 0) {
     const workshop = workshopById(id);
     if (!workshop || count <= 0) return 0;
     const masteryMultiplier = 1 + Math.sqrt(Math.max(0, mastery)) * 0.06;
-    return workshop.baseRate * count * milestoneMultiplier(count) * masteryMultiplier;
+    return workshop.baseRate * count * milestoneMultiplier(count, upgradeLevel) * masteryMultiplier;
   }
 
-  function baseProduction(workshops = {}, mastery = {}) {
+  function baseProduction(workshops = {}, mastery = {}, workshopUpgrades = {}) {
     return WORKSHOPS.reduce((total, workshop) => total + workshopProduction(
       workshop.id,
       workshops[workshop.id] || 0,
-      mastery[workshop.id] || 0
+      mastery[workshop.id] || 0,
+      workshopUpgrades[workshop.id] || 0
     ), 0);
   }
 
@@ -73,10 +106,51 @@
     return WORKSHOPS.reduce((total, workshop) => total + (workshops[workshop.id] || 0), 0);
   }
 
-  function clickGain(totalClicks = 0, workshops = {}, calibration = 0) {
+  function calibrationUpgradeById(id) {
+    return CALIBRATION_UPGRADES.find(upgrade => upgrade.id === id);
+  }
+
+  function calibrationUpgradeCost(id, currentLevel = 0) {
+    return calibrationUpgradeById(id)?.costs[currentLevel] ?? Infinity;
+  }
+
+  function calibrationSpent(levels = {}) {
+    return CALIBRATION_UPGRADES.reduce((total, upgrade) => {
+      const level = Math.min(upgrade.costs.length, Math.max(0, levels[upgrade.id] || 0));
+      return total + upgrade.costs.slice(0, level).reduce((sum, cost) => sum + cost, 0);
+    }, 0);
+  }
+
+  function availableCalibration(total = 0, levels = {}) {
+    return Math.max(0, total - calibrationSpent(levels));
+  }
+
+  function hyperStats(levels = {}) {
+    const powerLevel = Math.min(6, Math.max(0, levels.hyperPower || 0));
+    const stabilityLevel = Math.min(4, Math.max(0, levels.hyperStability || 0));
+    const durationLevel = Math.min(4, Math.max(0, levels.hyperDuration || 0));
+    const pulseLevel = Math.min(4, Math.max(0, levels.hyperPulses || 0));
+    return {
+      chargeTarget: 40,
+      idleDelayMs: 800,
+      decayPerSecond: Math.max(1.6, 4 - stabilityLevel * 0.6),
+      multiplier: 2 + powerLevel * 0.5,
+      durationMs: 8000 + durationLevel * 1500,
+      pulsesPerSecond: 1 + pulseLevel
+    };
+  }
+
+  function decayHyperCharge(charge = 0, idleForMs = 0, deltaSeconds = 0, levels = {}) {
+    const stats = hyperStats(levels);
+    if (idleForMs <= stats.idleDelayMs) return Math.max(0, charge);
+    return Math.max(0, charge - stats.decayPerSecond * Math.max(0, deltaSeconds));
+  }
+
+  function clickGain(totalClicks = 0, workshops = {}, calibration = 0, calibrationUpgrades = {}) {
     const practicePower = 1 + Math.floor(Math.max(0, totalClicks) / 250);
     const networkPower = 1 + Math.floor(totalOwned(workshops) / 10);
-    return practicePower * networkPower * permanentMultiplier(calibration);
+    const coreMultiplier = 1 + Math.min(4, Math.max(0, calibrationUpgrades.corePower || 0)) * 0.25;
+    return practicePower * networkPower * permanentMultiplier(calibration) * coreMultiplier;
   }
 
   function cycleTarget(cycle = 1) {
@@ -90,15 +164,26 @@
   return {
     WORKSHOPS,
     MILESTONES,
+    WORKSHOP_UPGRADE_SECONDS,
+    CALIBRATION_UPGRADES,
     workshopById,
     workshopCost,
     purchaseQuote,
     milestoneMultiplier,
+    unlockedMilestoneCount,
     nextMilestone,
+    workshopUpgradeCost,
+    workshopUpgradeStatus,
     workshopProduction,
     baseProduction,
     permanentMultiplier,
     totalOwned,
+    calibrationUpgradeById,
+    calibrationUpgradeCost,
+    calibrationSpent,
+    availableCalibration,
+    hyperStats,
+    decayHyperCharge,
     clickGain,
     cycleTarget,
     cycleGain

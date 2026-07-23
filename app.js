@@ -6,11 +6,10 @@
   if (!Engine || !Model) throw new Error("Les modules du jeu n'ont pas été chargés.");
 
   const SAVE_KEY = "nexus-sti2d-laboratoire-v2";
-  const HYPER_CLICKS = 40;
-  const HYPER_DURATION = 10000;
   const FAST_TIME = 8000;
   const MAX_QUESTION_TIME = 20000;
   const OFFLINE_LIMIT = 4 * 60 * 60;
+  const REPORT_LIMIT = 50;
 
   const EVENT_TYPES = [
     {
@@ -45,6 +44,8 @@
     cycleGain: $("#cycle-gain"),
     permanentMultiplier: $("#permanent-multiplier"),
     cycleButton: $("#cycle-button"),
+    calibrationAvailable: $("#calibration-available"),
+    calibrationUpgradeList: $("#calibration-upgrade-list"),
     masteryTotal: $("#mastery-total"),
     corePanel: $(".core-panel"),
     coreButton: $("#core-button"),
@@ -85,6 +86,8 @@
     questionText: $("#question-text"),
     answers: $("#answers"),
     feedback: $("#feedback"),
+    reportQuestion: $("#report-question"),
+    questionReference: $("#question-reference"),
     eventNext: $("#event-next"),
     resetButton: $("#reset-button"),
     confirmDialog: $("#confirm-dialog"),
@@ -97,11 +100,15 @@
 
   function freshState() {
     const workshops = {};
+    const workshopUpgrades = {};
     const mastery = {};
     Model.WORKSHOPS.forEach(workshop => {
       workshops[workshop.id] = 0;
+      workshopUpgrades[workshop.id] = 0;
       mastery[workshop.id] = 0;
     });
+    const calibrationUpgrades = {};
+    Model.CALIBRATION_UPGRADES.forEach(upgrade => { calibrationUpgrades[upgrade.id] = 0; });
     return {
       version: 2,
       flux: 0,
@@ -109,10 +116,12 @@
       lifetimeFlux: 0,
       totalClicks: 0,
       chargeClicks: 0,
+      lastManualClickAt: 0,
       hyperUntil: 0,
       boostUntil: 0,
       boostMultiplier: 1,
       workshops,
+      workshopUpgrades,
       mastery,
       totalAnswered: 0,
       totalCorrect: 0,
@@ -120,12 +129,14 @@
       bestStreak: 0,
       cycle: 1,
       calibration: 0,
+      calibrationUpgrades,
       nextEventAt: Date.now() + 25000,
       eventWins: 0,
       soundEnabled: true,
       bulk: "1",
       recentKeys: [],
       recentKinds: [],
+      questionReports: [],
       lastSeen: Date.now()
     };
   }
@@ -137,9 +148,18 @@
       if (!parsed || parsed.version !== 2) return initial;
       const merged = { ...initial, ...parsed };
       merged.workshops = { ...initial.workshops, ...(parsed.workshops || {}) };
+      merged.workshopUpgrades = { ...initial.workshopUpgrades, ...(parsed.workshopUpgrades || {}) };
       merged.mastery = { ...initial.mastery, ...(parsed.mastery || {}) };
+      merged.calibrationUpgrades = { ...initial.calibrationUpgrades, ...(parsed.calibrationUpgrades || {}) };
+      Model.WORKSHOPS.forEach(workshop => {
+        merged.workshopUpgrades[workshop.id] = Math.min(Model.MILESTONES.length, Math.max(0, Math.floor(Number(merged.workshopUpgrades[workshop.id]) || 0)));
+      });
+      Model.CALIBRATION_UPGRADES.forEach(upgrade => {
+        merged.calibrationUpgrades[upgrade.id] = Math.min(upgrade.costs.length, Math.max(0, Math.floor(Number(merged.calibrationUpgrades[upgrade.id]) || 0)));
+      });
       merged.recentKeys = Array.isArray(parsed.recentKeys) ? parsed.recentKeys.slice(-12) : [];
       merged.recentKinds = Array.isArray(parsed.recentKinds) ? parsed.recentKinds.slice(-2) : [];
+      merged.questionReports = Array.isArray(parsed.questionReports) ? parsed.questionReports.slice(-REPORT_LIMIT) : [];
       return merged;
     } catch {
       return initial;
@@ -174,12 +194,13 @@
   function now() { return Date.now(); }
   function isHyper() { return state.hyperUntil > now(); }
   function isBoosted() { return state.boostUntil > now(); }
+  function hyperStats() { return Model.hyperStats(state.calibrationUpgrades); }
   function permanentMultiplier() { return Model.permanentMultiplier(state.calibration); }
-  function baseProduction() { return Model.baseProduction(state.workshops, state.mastery); }
-  function clickValue() { return Model.clickGain(state.totalClicks, state.workshops, state.calibration); }
+  function baseProduction() { return Model.baseProduction(state.workshops, state.mastery, state.workshopUpgrades); }
+  function clickValue() { return Model.clickGain(state.totalClicks, state.workshops, state.calibration, state.calibrationUpgrades); }
   function productionRate() {
     const passive = baseProduction() * permanentMultiplier() * (isBoosted() ? state.boostMultiplier : 1);
-    const hyperPulses = isHyper() ? clickValue() * 5 : 0;
+    const hyperPulses = isHyper() ? clickValue() * hyperStats().pulsesPerSecond : 0;
     return passive + hyperPulses;
   }
 
@@ -211,6 +232,40 @@
     dom.toast.classList.add("show");
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => dom.toast.classList.remove("show"), 2800);
+  }
+
+  function questionReference(question) {
+    const source = Engine.fingerprint(question);
+    let hash = 2166136261;
+    for (let index = 0; index < source.length; index += 1) {
+      hash ^= source.charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
+    }
+    return `${question.kind.slice(0, 4).toUpperCase()}-${(hash >>> 0).toString(36).toUpperCase().slice(0, 6)}`;
+  }
+
+  function reportCurrentQuestion() {
+    if (!currentQuestion) return;
+    const reference = questionReference(currentQuestion);
+    if (!state.questionReports.some(report => report.reference === reference)) {
+      state.questionReports.push({
+        reference,
+        kind: currentQuestion.kind,
+        skill: currentQuestion.skill,
+        prompt: currentQuestion.prompt,
+        choices: currentQuestion.choices,
+        answer: currentQuestion.choices[currentQuestion.answer],
+        explanation: currentQuestion.explanation,
+        reportedAt: new Date().toISOString()
+      });
+      if (state.questionReports.length > REPORT_LIMIT) state.questionReports.shift();
+    }
+    const diagnostic = `[NEXUS ${reference}] ${currentQuestion.prompt} | Réponse attendue : ${currentQuestion.choices[currentQuestion.answer]}`;
+    navigator.clipboard?.writeText?.(diagnostic)?.catch(() => {});
+    dom.reportQuestion.disabled = true;
+    dom.reportQuestion.textContent = "Question signalée";
+    save();
+    showToast(`Question ${reference} signalée et enregistrée.`);
   }
 
   function playTone(frequency, duration, options = {}) {
@@ -324,16 +379,19 @@
   }
 
   function activateHyper() {
-    state.hyperUntil = now() + HYPER_DURATION;
+    const stats = hyperStats();
+    state.hyperUntil = now() + stats.durationMs;
     state.chargeClicks = 0;
     playSound("hyper");
-    showToast("Hypercadence ! Clics ×5 et impulsions automatiques pendant 10 s.");
+    showToast(`Hypercadence ! Clics ×${format(stats.multiplier)} et ${plural(stats.pulsesPerSecond, "impulsion")} automatique${stats.pulsesPerSecond > 1 ? "s" : ""}/s.`);
   }
 
   function clickCore() {
     const hyper = isHyper();
-    const gain = clickValue() * (hyper ? 5 : 1);
+    const stats = hyperStats();
+    const gain = clickValue() * (hyper ? stats.multiplier : 1);
     state.totalClicks += 1;
+    state.lastManualClickAt = now();
     addFlux(gain);
     playSound("click");
     spawnFloat(gain);
@@ -341,7 +399,7 @@
     setTimeout(() => dom.coreButton.classList.remove("pulse"), 90);
     if (!hyper) {
       state.chargeClicks += 1;
-      if (state.chargeClicks >= HYPER_CLICKS) activateHyper();
+      if (state.chargeClicks >= stats.chargeTarget) activateHyper();
     }
   }
 
@@ -355,7 +413,8 @@
     if (!workshop) return;
     const quote = workshopQuote(workshop);
     if (!quote.quantity || quote.cost > state.flux) return;
-    const first = (state.workshops[id] || 0) === 0;
+    const previousCount = state.workshops[id] || 0;
+    const first = previousCount === 0;
     state.flux -= quote.cost;
     state.workshops[id] += quote.quantity;
     playSound("buy");
@@ -364,8 +423,48 @@
       showToast(`${workshop.name} activé : les questions de ${Engine.SKILLS[id].toLowerCase()} sont débloquées.`);
     }
     const count = state.workshops[id];
-    if (Model.MILESTONES.includes(count)) showToast(`Palier ${count} atteint : puissance de ${workshop.name} doublée !`);
+    const nextUpgradeMilestone = Model.MILESTONES[state.workshopUpgrades[id] || 0];
+    if (nextUpgradeMilestone && previousCount < nextUpgradeMilestone && count >= nextUpgradeMilestone) {
+      showToast(`Palier ${nextUpgradeMilestone} atteint : une amélioration ×2 est disponible pour ${workshop.name}.`);
+    }
     renderWorkshops();
+  }
+
+  function buyWorkshopUpgrade(id) {
+    const workshop = Model.workshopById(id);
+    if (!workshop) return;
+    const level = state.workshopUpgrades[id] || 0;
+    const status = Model.workshopUpgradeStatus(id, state.workshops[id] || 0, level);
+    if (!status.unlocked || status.completed || status.cost > state.flux) return;
+    state.flux -= status.cost;
+    state.workshopUpgrades[id] = level + 1;
+    playSound("buy");
+    showToast(`${workshop.name} amélioré : sa production est doublée.`);
+    renderWorkshops();
+  }
+
+  function calibrationEffect(id, level) {
+    const stats = Model.hyperStats({ ...state.calibrationUpgrades, [id]: level });
+    if (id === "corePower") return `Clics ×${format(1 + level * 0.25)}`;
+    if (id === "hyperPower") return `Hypercadence ×${format(stats.multiplier)}`;
+    if (id === "hyperStability") return `Perte ${format(stats.decayPerSecond)} charge/s`;
+    if (id === "hyperDuration") return `Durée ${format(stats.durationMs / 1000)} s`;
+    if (id === "hyperPulses") return `${format(stats.pulsesPerSecond)} impulsion${stats.pulsesPerSecond > 1 ? "s" : ""}/s`;
+    return "";
+  }
+
+  function buyCalibrationUpgrade(id) {
+    const upgrade = Model.calibrationUpgradeById(id);
+    if (!upgrade) return;
+    const level = state.calibrationUpgrades[id] || 0;
+    const cost = Model.calibrationUpgradeCost(id, level);
+    const available = Model.availableCalibration(state.calibration, state.calibrationUpgrades);
+    if (!Number.isFinite(cost) || cost > available) return;
+    state.calibrationUpgrades[id] = level + 1;
+    playSound("buy");
+    save();
+    renderCalibrationUpgrades();
+    showToast(`${upgrade.name} passe au niveau ${level + 1}.`);
   }
 
   function unlockedWorkshops() {
@@ -432,6 +531,11 @@
     dom.eventScore.textContent = `${eventRun.correct}/${eventRun.event.questionCount}`;
     dom.skillChip.textContent = Engine.SKILLS[currentQuestion.skill];
     dom.questionText.textContent = currentQuestion.prompt;
+    const reference = questionReference(currentQuestion);
+    const alreadyReported = state.questionReports.some(report => report.reference === reference);
+    dom.questionReference.textContent = `Réf. ${reference}`;
+    dom.reportQuestion.disabled = true;
+    dom.reportQuestion.textContent = alreadyReported ? "Question signalée" : "Signaler après avoir répondu";
     dom.questionVisual.innerHTML = currentQuestion.visual || "";
     dom.questionVisual.hidden = !currentQuestion.visual;
     dom.feedback.hidden = true;
@@ -477,6 +581,10 @@
     dom.feedback.classList.toggle("wrong", !correct);
     const speedText = correct && elapsed <= FAST_TIME ? " Réponse rapide : récompense améliorée." : "";
     dom.feedback.innerHTML = `<strong>${correct ? "Bonne réponse." : "Pas cette fois."}</strong> ${currentQuestion.explanation}${speedText}`;
+    const reference = questionReference(currentQuestion);
+    const alreadyReported = state.questionReports.some(report => report.reference === reference);
+    dom.reportQuestion.disabled = alreadyReported;
+    dom.reportQuestion.textContent = alreadyReported ? "Question signalée" : "Signaler cette question";
     dom.eventScore.textContent = `${eventRun.correct}/${eventRun.event.questionCount}`;
     dom.eventNext.hidden = false;
     dom.eventNext.textContent = eventRun.index >= eventRun.event.questionCount ? "Terminer l'intervention" : "Question suivante";
@@ -525,9 +633,10 @@
     confirmMode = mode;
     if (mode === "cycle") {
       const gain = Model.cycleGain(state.cycleFlux, state.cycle);
+      const availableAfter = Model.availableCalibration(state.calibration + gain, state.calibrationUpgrades);
       dom.confirmKicker.textContent = "Cycle d'étalonnage";
       dom.confirmTitle.textContent = "Reconfigurer le laboratoire ?";
-      dom.confirmText.textContent = `Tu gagneras ${plural(gain, "point")} d'étalonnage. Le flux et les ateliers repartiront de zéro. Ta maîtrise et tes statistiques seront conservées. Le multiplicateur permanent passera à ×${format(Model.permanentMultiplier(state.calibration + gain))}.`;
+      dom.confirmText.textContent = `Tu gagneras ${plural(gain, "point")} d'étalonnage et disposeras alors de ${plural(availableAfter, "point")} à investir. Le flux, les ateliers et leurs améliorations repartiront de zéro. Ta maîtrise, tes protocoles permanents et tes statistiques seront conservés. Le multiplicateur permanent passera à ×${format(Model.permanentMultiplier(state.calibration + gain))}.`;
       dom.confirmAction.textContent = "Lancer le nouveau cycle";
     } else {
       dom.confirmKicker.textContent = "Réinitialisation";
@@ -546,15 +655,20 @@
     state.flux = state.calibration * 25;
     state.cycleFlux = 0;
     state.chargeClicks = 0;
+    state.lastManualClickAt = 0;
     state.hyperUntil = 0;
     state.boostUntil = 0;
     state.boostMultiplier = 1;
-    Model.WORKSHOPS.forEach(workshop => { state.workshops[workshop.id] = 0; });
+    Model.WORKSHOPS.forEach(workshop => {
+      state.workshops[workshop.id] = 0;
+      state.workshopUpgrades[workshop.id] = 0;
+    });
     eventRun = null;
     currentQuestion = null;
     scheduleNextEvent();
     save();
     renderWorkshops();
+    renderCalibrationUpgrades();
     playSound("cycle");
     showToast(`Cycle ${state.cycle} lancé avec un multiplicateur permanent ×${format(permanentMultiplier())}.`);
   }
@@ -566,6 +680,7 @@
     eventRun = null;
     currentQuestion = null;
     renderWorkshops();
+    renderCalibrationUpgrades();
     save();
     showToast("Nouvelle partie créée.");
   }
@@ -588,11 +703,17 @@
             <span id="milestone-${workshop.id}">Palier à 10</span>
           </div>
         </div>
-        <button class="workshop-buy" data-buy="${workshop.id}" type="button"><span>Acheter</span><small>${format(workshop.baseCost)} flux</small></button>`;
+        <button class="workshop-buy" data-buy="${workshop.id}" type="button"><span>Acheter</span><small>${format(workshop.baseCost)} flux</small></button>
+        <button class="workshop-upgrade" data-upgrade="${workshop.id}" type="button"><span>Amélioration ×2</span><small>Débloquée au palier 10</small></button>`;
       fragment.append(card);
     });
     dom.workshopList.replaceChildren(fragment);
     dom.workshopList.addEventListener("click", event => {
+      const upgradeButton = event.target.closest("[data-upgrade]");
+      if (upgradeButton) {
+        buyWorkshopUpgrade(upgradeButton.dataset.upgrade);
+        return;
+      }
       const button = event.target.closest("[data-buy]");
       if (button) buyWorkshop(button.dataset.buy);
     });
@@ -605,17 +726,67 @@
       if (!card) return;
       const quote = workshopQuote(workshop);
       const button = card.querySelector(".workshop-buy");
-      const milestone = Model.nextMilestone(count);
-      const rate = Model.workshopProduction(workshop.id, count, state.mastery[workshop.id]) * permanentMultiplier() * (isBoosted() ? state.boostMultiplier : 1);
+      const upgradeButton = card.querySelector(".workshop-upgrade");
+      const upgradeLevel = state.workshopUpgrades[workshop.id] || 0;
+      const upgradeStatus = Model.workshopUpgradeStatus(workshop.id, count, upgradeLevel);
+      const rate = Model.workshopProduction(workshop.id, count, state.mastery[workshop.id], upgradeLevel) * permanentMultiplier() * (isBoosted() ? state.boostMultiplier : 1);
       card.classList.toggle("owned", count > 0);
-      card.classList.toggle("unaffordable", !quote.quantity);
+      card.classList.toggle("unaffordable", !quote.quantity && !(upgradeStatus.unlocked && state.flux >= upgradeStatus.cost));
       card.querySelector(`#count-bg-${workshop.id}`).textContent = count;
       card.querySelector(`#rate-${workshop.id}`).innerHTML = `<b>${format(rate)}/s</b>`;
       card.querySelector(`#mastery-${workshop.id}`).textContent = `Maîtrise ${state.mastery[workshop.id] || 0}`;
-      card.querySelector(`#milestone-${workshop.id}`).textContent = milestone ? `Prochain palier : ${milestone}` : "Tous les paliers atteints";
+      card.querySelector(`#milestone-${workshop.id}`).textContent = upgradeStatus.completed
+        ? "Toutes les améliorations achetées"
+        : upgradeStatus.unlocked
+          ? `Palier ${upgradeStatus.milestone} atteint · amélioration disponible`
+          : `Prochain palier : ${upgradeStatus.milestone} (${count}/${upgradeStatus.milestone})`;
       button.disabled = !quote.quantity;
       button.querySelector("span").textContent = quote.quantity ? `Acheter ×${quote.quantity}` : "Acheter";
       button.querySelector("small").textContent = quote.quantity ? `${format(quote.cost)} flux` : `${format(Model.workshopCost(workshop.id, count))} flux`;
+      upgradeButton.hidden = upgradeStatus.completed;
+      upgradeButton.disabled = !upgradeStatus.unlocked || upgradeStatus.cost > state.flux;
+      upgradeButton.classList.toggle("ready", upgradeStatus.unlocked && upgradeStatus.cost <= state.flux);
+      upgradeButton.querySelector("span").textContent = upgradeStatus.unlocked ? `Doubler · niveau ${upgradeLevel + 1}` : `Amélioration ×2`;
+      upgradeButton.querySelector("small").textContent = upgradeStatus.unlocked
+        ? `${format(upgradeStatus.cost)} flux`
+        : `Débloquée au palier ${upgradeStatus.milestone}`;
+    });
+  }
+
+  function createCalibrationCards() {
+    const fragment = document.createDocumentFragment();
+    Model.CALIBRATION_UPGRADES.forEach(upgrade => {
+      const card = document.createElement("article");
+      card.className = "calibration-upgrade";
+      card.dataset.calibrationCard = upgrade.id;
+      card.innerHTML = `
+        <span class="calibration-icon" aria-hidden="true">${upgrade.icon}</span>
+        <div><strong>${upgrade.name}</strong><p>${upgrade.description}</p><small id="calibration-effect-${upgrade.id}"></small></div>
+        <button data-calibration-buy="${upgrade.id}" type="button"><span>Niv. 0</span><small>1 pt</small></button>`;
+      fragment.append(card);
+    });
+    dom.calibrationUpgradeList.replaceChildren(fragment);
+    dom.calibrationUpgradeList.addEventListener("click", event => {
+      const button = event.target.closest("[data-calibration-buy]");
+      if (button) buyCalibrationUpgrade(button.dataset.calibrationBuy);
+    });
+  }
+
+  function renderCalibrationUpgrades() {
+    const available = Model.availableCalibration(state.calibration, state.calibrationUpgrades);
+    dom.calibrationAvailable.textContent = `${plural(available, "pt")} disponible${available === 1 ? "" : "s"}`;
+    Model.CALIBRATION_UPGRADES.forEach(upgrade => {
+      const card = dom.calibrationUpgradeList.querySelector(`[data-calibration-card="${upgrade.id}"]`);
+      if (!card) return;
+      const level = state.calibrationUpgrades[upgrade.id] || 0;
+      const cost = Model.calibrationUpgradeCost(upgrade.id, level);
+      const button = card.querySelector("button");
+      const maxed = !Number.isFinite(cost);
+      card.classList.toggle("maxed", maxed);
+      card.querySelector(`#calibration-effect-${upgrade.id}`).textContent = calibrationEffect(upgrade.id, level);
+      button.disabled = maxed || cost > available;
+      button.querySelector("span").textContent = maxed ? "MAX" : `Niv. ${level} → ${level + 1}`;
+      button.querySelector("small").textContent = maxed ? "Terminé" : plural(cost, "pt");
     });
   }
 
@@ -652,16 +823,18 @@
   function render(nowValue = now()) {
     const hyper = state.hyperUntil > nowValue;
     const boost = state.boostUntil > nowValue;
+    const cadence = hyperStats();
     const owned = Model.totalOwned(state.workshops);
     const cycleTarget = Model.cycleTarget(state.cycle);
     const cycleGain = Model.cycleGain(state.cycleFlux, state.cycle);
     const masteryTotal = Object.values(state.mastery).reduce((sum, value) => sum + Number(value || 0), 0);
     const unlocked = unlockedWorkshops();
     const click = clickValue();
+    const availableCalibration = Model.availableCalibration(state.calibration, state.calibrationUpgrades);
 
     dom.flux.textContent = format(state.flux);
     dom.production.textContent = `${format(productionRate())}/s`;
-    dom.calibration.textContent = plural(state.calibration, "pt", "pts");
+    dom.calibration.textContent = `${format(availableCalibration, { digits: 0 })}/${format(state.calibration, { digits: 0 })} pts`;
     dom.cycle.textContent = state.cycle;
     dom.cycleRing.textContent = state.cycle;
     dom.cycleProgressText.textContent = `${format(state.cycleFlux)} / ${format(cycleTarget)}`;
@@ -672,21 +845,24 @@
     dom.masteryTotal.textContent = masteryTotal;
 
     dom.corePanel.classList.toggle("hyper", hyper);
-    dom.clickGain.textContent = `+${format(click * (hyper ? 5 : 1))} flux par clic${hyper ? " · ×5" : ""}`;
+    dom.clickGain.textContent = `+${format(click * (hyper ? cadence.multiplier : 1))} flux par clic${hyper ? ` · ×${format(cadence.multiplier)}` : ""}`;
     dom.totalClicks.textContent = plural(state.totalClicks, "activation");
     if (hyper) {
       const remaining = Math.max(0, (state.hyperUntil - nowValue) / 1000);
       dom.cadenceTitle.textContent = "HYPERCADENCE ACTIVE";
-      dom.cadenceHint.textContent = "Clics renforcés et 5 impulsions automatiques/s";
+      dom.cadenceHint.textContent = `Clics ×${format(cadence.multiplier)} et ${format(cadence.pulsesPerSecond)} impulsion${cadence.pulsesPerSecond > 1 ? "s" : ""}/s`;
       dom.cadenceCount.textContent = `${remaining.toFixed(1).replace(".", ",")} s`;
-      dom.cadenceBar.style.width = `${remaining / (HYPER_DURATION / 1000) * 100}%`;
+      dom.cadenceBar.style.width = `${remaining / (cadence.durationMs / 1000) * 100}%`;
       dom.boostPill.classList.add("hot");
-      dom.boostPill.innerHTML = `<span></span>Hypercadence ×5`;
+      dom.boostPill.innerHTML = `<span></span>Hypercadence ×${format(cadence.multiplier)}`;
     } else {
       dom.cadenceTitle.textContent = "Charge d'Hypercadence";
-      dom.cadenceHint.textContent = `${HYPER_CLICKS} clics pour accélérer le noyau`;
-      dom.cadenceCount.textContent = `${state.chargeClicks} / ${HYPER_CLICKS}`;
-      dom.cadenceBar.style.width = `${state.chargeClicks / HYPER_CLICKS * 100}%`;
+      const decaying = state.chargeClicks > 0 && nowValue - state.lastManualClickAt > cadence.idleDelayMs;
+      dom.cadenceHint.textContent = decaying
+        ? `Charge en baisse · −${format(cadence.decayPerSecond)} par seconde`
+        : `${cadence.chargeTarget} clics réguliers pour accélérer le noyau`;
+      dom.cadenceCount.textContent = `${format(state.chargeClicks)} / ${cadence.chargeTarget}`;
+      dom.cadenceBar.style.width = `${state.chargeClicks / cadence.chargeTarget * 100}%`;
       dom.boostPill.classList.toggle("hot", boost);
       dom.boostPill.innerHTML = boost ? `<span></span>Production ×${format(state.boostMultiplier)}` : "<span></span>Régime normal";
     }
@@ -711,6 +887,10 @@
     const delta = Math.min(0.25, Math.max(0, (timestamp - lastFrame) / 1000));
     lastFrame = timestamp;
     addFlux(productionRate() * delta);
+    const cadence = hyperStats();
+    if (!isHyper() && state.chargeClicks > 0 && now() - state.lastManualClickAt > cadence.idleDelayMs) {
+      state.chargeClicks = Model.decayHyperCharge(state.chargeClicks, now() - state.lastManualClickAt, delta, state.calibrationUpgrades);
+    }
     if (!isHyper() && state.hyperUntil !== 0) state.hyperUntil = 0;
     if (!isBoosted() && state.boostUntil !== 0) {
       state.boostUntil = 0;
@@ -739,6 +919,7 @@
   dom.eventStart.addEventListener("click", startEvent);
   dom.eventClose.addEventListener("click", () => dom.eventDialog.close());
   dom.eventNext.addEventListener("click", advanceEvent);
+  dom.reportQuestion.addEventListener("click", reportCurrentQuestion);
   dom.cycleButton.addEventListener("click", () => showConfirm("cycle"));
   dom.resetButton.addEventListener("click", () => showConfirm("reset"));
   dom.confirmAction.addEventListener("click", event => {
@@ -764,10 +945,12 @@
 
   installTouchGuards();
   createWorkshopCards();
+  createCalibrationCards();
   updateSoundButton();
   document.querySelectorAll(".bulk-button").forEach(button => button.classList.toggle("active", button.dataset.bulk === String(state.bulk)));
   applyOfflineProgress();
   renderWorkshops();
+  renderCalibrationUpgrades();
   render();
   showToast("Clique sur le noyau pour produire tes premiers flux.");
   requestAnimationFrame(frame);

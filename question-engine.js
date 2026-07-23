@@ -39,16 +39,59 @@
     return new Intl.NumberFormat("fr-FR", { maximumFractionDigits: digits }).format(rounded);
   }
 
+  function canonicalChoice(value) {
+    const normalized = String(value)
+      .trim()
+      .toLowerCase()
+      .replace(/[−–—]/g, "-")
+      .replace(/,/g, ".")
+      .replace(/\s+/g, " ");
+    const compact = normalized.replace(/\s/g, "");
+    const solutionPair = compact.match(/^x=([+-]?\d+(?:\.\d+)?)oux=([+-]?\d+(?:\.\d+)?)$/);
+    if (solutionPair) {
+      return `solutions:${solutionPair.slice(1).map(Number).sort((a, b) => a - b).join("|")}`;
+    }
+    const numeric = normalized.match(/^([+-]?\d+(?:\.\d+)?)\s*(.*)$/);
+    if (numeric) return `number:${Number(numeric[1])}:${numeric[2].replace(/\s/g, "")}`;
+    return compact;
+  }
+
+  function validateQuestion(question) {
+    const errors = [];
+    if (!question || typeof question !== "object") return { valid: false, errors: ["question absente"] };
+    if (typeof question.prompt !== "string" || question.prompt.trim().length < 10) errors.push("énoncé manquant");
+    if (!Array.isArray(question.choices) || question.choices.length !== 4) errors.push("quatre choix attendus");
+    else if (new Set(question.choices.map(canonicalChoice)).size !== 4) errors.push("choix mathématiquement équivalents");
+    if (!Number.isInteger(question.answer) || question.answer < 0 || question.answer > 3) errors.push("réponse invalide");
+    if (typeof question.explanation !== "string" || question.explanation.trim().length < 10) errors.push("correction manquante");
+    if (!SKILLS[question.skill]) errors.push("compétence inconnue");
+    if (!question.kind) errors.push("format manquant");
+    const serialized = JSON.stringify(question);
+    if (/NaN|undefined|Infinity/.test(serialized)) errors.push("valeur numérique invalide");
+    return { valid: errors.length === 0, errors };
+  }
+
   function makeChoices(correct, distractors, rng = Math.random) {
     const values = [String(correct), ...distractors.map(String)];
-    const unique = [...new Set(values)];
+    const unique = [];
+    const seen = new Set();
+    values.forEach(value => {
+      const canonical = canonicalChoice(value);
+      if (!seen.has(canonical)) {
+        seen.add(canonical);
+        unique.push(value);
+      }
+    });
     let bump = 1;
     while (unique.length < 4) {
       const numeric = Number(String(correct).replace(",", "."));
       const candidate = Number.isFinite(numeric)
         ? String(numeric + bump)
         : ["Aucune de ces réponses", "Impossible à déterminer", "Toutes les réponses"][bump - 1];
-      if (candidate && !unique.includes(candidate)) unique.push(candidate);
+      if (candidate && !seen.has(canonicalChoice(candidate))) {
+        seen.add(canonicalChoice(candidate));
+        unique.push(candidate);
+      }
       bump += 1;
     }
     const choices = shuffle(unique.slice(0, 4), rng);
@@ -60,7 +103,7 @@
       question.kind,
       question.prompt,
       question.visual || "",
-      question.choices.slice().sort().join("|")
+      question.choices.map(canonicalChoice).sort().join("|")
     ].join("§");
   }
 
@@ -437,7 +480,9 @@
       do {
         question = generator(rng);
         attempts += 1;
-      } while (excludedKeys.has(fingerprint(question)) && attempts < 20);
+      } while ((!validateQuestion(question).valid || excludedKeys.has(fingerprint(question))) && attempts < 40);
+      const validation = validateQuestion(question);
+      if (!validation.valid) throw new Error(`Question invalide (${question?.kind || "inconnue"}) : ${validation.errors.join(", ")}`);
       return question;
     });
     const newQuestions = generated.filter(question => !excludedKeys.has(fingerprint(question)));
@@ -459,5 +504,5 @@
     return selectGenerated(generators.length ? generators : SKILL_GENERATORS.proportions, mastery, rng, exclusions);
   }
 
-  return { SKILLS, GENERATORS, SKILL_GENERATORS, generate, generateForSkills, fingerprint, affineExpression, linearFactor, formatNumber };
+  return { SKILLS, GENERATORS, SKILL_GENERATORS, generate, generateForSkills, fingerprint, canonicalChoice, validateQuestion, affineExpression, linearFactor, formatNumber };
 });

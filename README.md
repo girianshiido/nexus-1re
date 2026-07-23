@@ -27,11 +27,13 @@ Le jeu peut être installé sur l'écran d'accueil : via le menu du navigateur s
 ## Boucle de jeu
 
 - Le noyau central produit du flux à chaque clic.
-- Après 40 clics manuels, l'**Hypercadence** renforce les clics et ajoute des impulsions automatiques pendant 10 secondes.
-- Neuf ateliers mathématiques s'achètent progressivement et produisent du flux passivement. Leurs paliers 10, 25, 50, 100 et 200 doublent leur puissance.
+- L'**Hypercadence** commence à ×2. Sa charge redescend rapidement quand les clics s'arrêtent ; les points d'étalonnage permettent ensuite d'améliorer sa puissance, sa stabilité, sa durée et ses impulsions.
+- Neuf ateliers mathématiques s'achètent progressivement et produisent du flux passivement. Leurs paliers 10, 25, 50, 100 et 200 débloquent des améliorations ×2 qu'il faut financer.
 - Des perturbations occasionnelles proposent de une à trois questions uniquement parmi les notions achetées. Une réponse rapide améliore la récompense, mais une erreur ne retire aucune ressource.
 - Chaque bonne réponse augmente la maîtrise de la notion et renforce légèrement son atelier.
 - Un nouveau cycle remet à zéro le flux et les ateliers, conserve la maîtrise et accorde un multiplicateur permanent.
+- Les points d'étalonnage peuvent être investis sans réduire le multiplicateur déjà gagné.
+- Chaque question possède une référence et peut être signalée localement après la réponse.
 - La progression est enregistrée localement dans le navigateur.
 
 ## Vérifications
