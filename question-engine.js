@@ -658,7 +658,8 @@
     const root = randInt(-5, 5, rng);
     const constant = -coefficient * root;
     const expression = affineExpression(coefficient, constant);
-    const greater = coefficient > 0;
+    const askPositive = rng() < 0.5;
+    const greater = askPositive ? coefficient > 0 : coefficient < 0;
     const good = `x ${greater ? ">" : "<"} ${root}`;
     const { choices, answer } = makeChoices(good, [
       `x ${greater ? "<" : ">"} ${root}`,
@@ -668,28 +669,31 @@
     return {
       kind: "linear-sign",
       skill: "algebra",
-      prompt: `Pour quelles valeurs de x l'expression ${expression} est-elle strictement positive ?`,
+      prompt: `Pour quelles valeurs de x l'expression ${expression} est-elle strictement ${askPositive ? "positive" : "négative"} ?`,
       choices, answer,
-      explanation: `${expression} s'annule en ${root}. Son coefficient directeur est ${coefficient > 0 ? "positif" : "négatif"}, donc l'expression est positive pour ${good}.`
+      explanation: `${expression} s'annule en ${root}. Son coefficient directeur est ${coefficient > 0 ? "positif" : "négatif"}, donc l'expression est ${askPositive ? "positive" : "négative"} pour ${good}.`
     };
   }
 
   function factorizedSign(rng) {
     const firstRoot = randInt(-6, -1, rng);
     const secondRoot = randInt(1, 6, rng);
-    const expression = `(x ${firstRoot < 0 ? "+" : "−"} ${Math.abs(firstRoot)})(x − ${secondRoot})`;
-    const good = `x < ${firstRoot} ou x > ${secondRoot}`;
-    const { choices, answer } = makeChoices(good, [
-      `${firstRoot} < x < ${secondRoot}`,
-      `x > ${firstRoot}`,
-      `x < ${secondRoot}`
-    ], rng);
+    const coefficient = pick([-3, -2, -1, 1, 2, 3], rng);
+    const leading = coefficient === 1 ? "" : coefficient === -1 ? "−" : String(coefficient);
+    const expression = `${leading}(x ${firstRoot < 0 ? "+" : "−"} ${Math.abs(firstRoot)})(x − ${secondRoot})`;
+    const askPositive = rng() < 0.5;
+    const exterior = `x < ${firstRoot} ou x > ${secondRoot}`;
+    const interior = `${firstRoot} < x < ${secondRoot}`;
+    const good = askPositive === (coefficient > 0) ? exterior : interior;
+    const { choices, answer } = makeChoices(good, askPositive
+      ? [interior, `x > ${firstRoot}`, `x < ${secondRoot}`]
+      : [exterior, `x > ${firstRoot}`, `x < ${secondRoot}`], rng);
     return {
       kind: "factorized-sign",
       skill: "algebra",
-      prompt: `Quand l'expression ${expression} est-elle strictement positive ?`,
+      prompt: `Quand l'expression ${expression} est-elle strictement ${askPositive ? "positive" : "négative"} ?`,
       choices, answer,
-      explanation: `Le produit est positif à l'extérieur des deux racines ${firstRoot} et ${secondRoot} : ${good}.`
+      explanation: `Les deux facteurs ont le même signe à l'extérieur des racines ${firstRoot} et ${secondRoot}, et des signes contraires entre elles.${coefficient < 0 ? " Le coefficient négatif inverse le signe du produit." : ""} L'expression est donc ${askPositive ? "positive" : "négative"} pour ${good}.`
     };
   }
 
@@ -765,19 +769,21 @@
     const slope = pick([-2, -1, 1, 2], rng);
     const root = randInt(-3, 3, rng);
     const intercept = -slope * root;
-    const good = `x ${slope > 0 ? ">" : "<"} ${root}`;
+    const askPositive = rng() < 0.5;
+    const greater = askPositive ? slope > 0 : slope < 0;
+    const good = `x ${greater ? ">" : "<"} ${root}`;
     const { choices, answer } = makeChoices(good, [
-      `x ${slope > 0 ? "<" : ">"} ${root}`,
-      `x ${slope > 0 ? "≥" : "≤"} ${root}`,
-      `x ${slope > 0 ? ">" : "<"} ${-root}`
+      `x ${greater ? "<" : ">"} ${root}`,
+      `x ${greater ? "≥" : "≤"} ${root}`,
+      `x ${greater ? ">" : "<"} ${-root}`
     ], rng);
     return {
       kind: "graph-sign-reading",
       skill: "functions",
-      prompt: "Pour quelles valeurs de x la fonction représentée est-elle strictement positive ?",
+      prompt: `Pour quelles valeurs de x la fonction représentée est-elle strictement ${askPositive ? "positive" : "négative"} ?`,
       choices, answer,
       visual: `<canvas class="question-plot" data-plot="line" data-slope="${slope}" data-intercept="${intercept}" role="img" aria-label="Graphique d'une fonction affine dans un repère gradué"></canvas>`,
-      explanation: `La courbe coupe l'axe des abscisses en ${root} et se trouve au-dessus de cet axe pour ${good}.`
+      explanation: `La courbe coupe l'axe des abscisses en ${root} et se trouve ${askPositive ? "au-dessus" : "au-dessous"} de cet axe pour ${good}.`
     };
   }
 

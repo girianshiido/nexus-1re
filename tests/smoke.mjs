@@ -56,6 +56,23 @@ for (let i = 0; i < 300; i += 1) {
 }
 assert.deepEqual([...developFamilies].sort(), ["product", "reduction", "simple"], "les développements doivent couvrir trois familles complémentaires");
 
+for (const [label, generator] of [
+  ["signe affine", engine.SKILL_GENERATORS.algebra[3]],
+  ["signe produit", engine.SKILL_GENERATORS.algebra[4]],
+  ["signe graphique", engine.SKILL_GENERATORS.functions[4]]
+]) {
+  const signsAsked = new Set();
+  for (let i = 0; i < 300; i += 1) {
+    const question = generator(Math.random);
+    signsAsked.add(question.prompt.includes("strictement négative") ? "negative" : "positive");
+  }
+  assert.deepEqual([...signsAsked].sort(), ["negative", "positive"], `${label} doit interroger les deux signes`);
+}
+
+const negativeCoefficientValues = [0, 0, 0.4, 0];
+const factorizedWithNegativeCoefficient = engine.SKILL_GENERATORS.algebra[4](() => negativeCoefficientValues.shift() ?? 0);
+assert.match(factorizedWithNegativeCoefficient.prompt, /−\(x \+ 6\)\(x − 1\)/, "le signe d'un coefficient -1 doit être visible devant un produit");
+
 const productRandomValues = [0.86, 0.5];
 const productWithZero = engine.GENERATORS.factory[0](() => productRandomValues.shift() ?? 0.5);
 assert.match(productWithZero.prompt, /Résoudre x\(x \+ 5\) = 0\./, "le facteur x + 0 doit être écrit x et placé en premier");
