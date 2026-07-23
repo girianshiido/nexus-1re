@@ -405,9 +405,16 @@ dialog::backdrop { background: rgba(1, 9, 14, 0.82); backdrop-filter: blur(8px);
 .answer-button:hover:not(:disabled) { border-color: var(--cyan); background: rgba(102, 228, 231, 0.08); }
 .answer-button.correct { border-color: var(--green); color: #d9ffe7; background: rgba(120, 230, 163, 0.14); }
 .answer-button.wrong { border-color: var(--danger); color: #ffe1e7; background: rgba(255, 117, 141, 0.14); }
+.answer-button.selected { border-color: var(--cyan); background: rgba(102, 228, 231, 0.13); }
 .answer-button:disabled { cursor: default; }
 .feedback { margin: 15px 0; padding: 13px; border-radius: 12px; color: #dcebf0; background: rgba(120, 230, 163, 0.08); font-size: 12px; line-height: 1.5; }
 .feedback.wrong { background: rgba(255, 117, 141, 0.08); }
+.learning-rule { display: block; margin-top: 8px; color: var(--cyan); }
+.session-mark { display: block; color: var(--cyan); font-size: clamp(28px, 6vw, 48px); text-align: center; }
+.feedback > h3 { margin: 6px 0 14px; text-align: center; }
+.session-corrections { display: grid; gap: 8px; margin-top: 14px; }
+.session-corrections > strong { color: var(--violet); }
+.session-corrections p { margin: 0; padding: 9px; border: 1px solid var(--line); border-radius: 9px; background: rgba(5, 22, 32, 0.45); }
 .question-tools { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin: 12px 0; color: var(--muted); font-size: 9px; }
 .question-tools .text-button { font-size: 10px; }
 
@@ -743,6 +750,55 @@ dialog::backdrop { background: rgba(1, 9, 14, 0.82); backdrop-filter: blur(8px);
 .network-panel .event-countdown { margin: 15px 0 0; }
 .network-reset-button { display: none; margin: 16px auto 0; color: rgba(255, 186, 107, 0.82); font-size: 11px; }
 
+.learning-panel {
+  margin-top: 16px;
+  padding: 18px;
+  border: 1px solid rgba(102, 228, 231, 0.2);
+  border-radius: 17px;
+  background: rgba(5, 23, 33, 0.48);
+}
+.learning-heading { display: flex; justify-content: space-between; gap: 22px; align-items: flex-start; }
+.learning-heading .eyebrow, .learning-heading h2, .learning-heading p { margin: 0; }
+.learning-heading h2 { margin-top: 4px; font-size: 21px; }
+.learning-heading p { max-width: 590px; margin-top: 5px; color: var(--muted); font-size: 11px; line-height: 1.45; }
+.learning-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px; max-width: 470px; }
+.learning-actions button { padding: 9px 11px; font-size: 9px; white-space: nowrap; }
+.learning-stage-summary { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin-top: 16px; }
+.learning-stage { padding: 11px; border: 1px solid var(--line); border-radius: 12px; background: rgba(3, 18, 27, 0.58); }
+.learning-stage strong, .learning-stage span { display: block; }
+.learning-stage strong { color: var(--cyan); font-size: 20px; }
+.learning-stage span { margin-top: 2px; color: var(--muted); font-size: 9px; }
+.learning-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 15px; }
+.learning-columns h3 { margin: 0 0 8px; color: var(--violet); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; }
+.learning-priorities, .learning-workshops { display: grid; gap: 6px; }
+.learning-priorities article, .learning-workshops article {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  min-height: 45px;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(4, 19, 29, 0.56);
+}
+.learning-priorities strong, .learning-priorities small,
+.learning-workshops strong, .learning-workshops small { display: block; }
+.learning-priorities strong, .learning-workshops strong { font-size: 10px; }
+.learning-priorities small, .learning-workshops small { margin-top: 3px; color: var(--muted); font-size: 8px; }
+.learning-workshops .text-button { flex: 0 0 auto; color: var(--cyan); font-size: 9px; }
+.stage-badge { flex: 0 0 auto; padding: 5px 7px; border-radius: 99px; font-size: 8px; font-weight: 800; }
+.stage-mastered { border-color: rgba(120, 230, 163, 0.28); }
+.stage-mastered .stage-badge, .stage-badge.stage-mastered { color: var(--green); background: rgba(120, 230, 163, 0.1); }
+.stage-review { border-color: rgba(255, 186, 107, 0.3); }
+.stage-review .stage-badge, .stage-badge.stage-review { color: var(--orange); background: rgba(255, 186, 107, 0.1); }
+.stage-fragile { border-color: rgba(255, 117, 141, 0.26); }
+.stage-fragile .stage-badge, .stage-badge.stage-fragile { color: #ff9bad; background: rgba(255, 117, 141, 0.1); }
+.stage-training .stage-badge, .stage-badge.stage-training { color: var(--cyan); background: rgba(102, 228, 231, 0.08); }
+.stage-discovery .stage-badge, .stage-badge.stage-discovery { color: var(--muted); background: rgba(145, 169, 181, 0.08); }
+.learning-empty { margin: 0; color: var(--muted); font-size: 10px; }
+.exam-note { margin: 13px 0 0; color: var(--muted); font-size: 9px; line-height: 1.45; }
+
 .event-card {
   position: fixed;
   z-index: 45;
@@ -830,6 +886,9 @@ footer { width: min(1180px, calc(100% - 32px)); margin-top: 15px; padding-bottom
   .workshop-list, .workshop-upgrade-list { grid-template-columns: 1fr; }
   .network-summary { grid-template-columns: 1fr 1fr; }
   .network-detail { grid-template-columns: 1fr; }
+  .learning-heading { display: block; }
+  .learning-actions { justify-content: flex-start; max-width: none; margin-top: 13px; }
+  .learning-columns { grid-template-columns: 1fr; }
   .network-reset-button { display: block; }
   .calibration-dialog-card .calibration-upgrade-list { grid-template-columns: 1fr; }
 
@@ -866,6 +925,10 @@ footer { width: min(1180px, calc(100% - 32px)); margin-top: 15px; padding-bottom
   .network-cycle-head { display: grid; gap: 5px; }
   .network-progress { grid-column: 1; }
   .network-cycle .primary-button { grid-column: 1; grid-row: auto; width: 100%; }
+  .learning-panel { padding: 14px 11px; }
+  .learning-actions { display: grid; grid-template-columns: 1fr; }
+  .learning-actions button { width: 100%; white-space: normal; }
+  .learning-stage-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
   .event-card {
     top: calc(env(safe-area-inset-top, 0px) + 104px);

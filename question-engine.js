@@ -1380,6 +1380,49 @@
     }
   ];
 
+  const CAPABILITY_BY_KIND = new Map();
+  PROGRAMME_2026.forEach(section => section.capabilities.forEach(capability => {
+    capability.kinds.forEach(kind => {
+      if (!CAPABILITY_BY_KIND.has(kind)) {
+        CAPABILITY_BY_KIND.set(kind, {
+          label: capability.label,
+          origin: capability.origin || "Première 2026",
+          section: section.title
+        });
+      }
+    });
+  }));
+
+  const KIND_GENERATORS = {};
+  const KIND_SKILLS = {};
+  const MULTI_KIND_GENERATORS = new Map([
+    [nextSequence, ["arithmetic-sequence", "geometric-sequence"]]
+  ]);
+  Object.entries(SKILL_GENERATORS).forEach(([skill, generators]) => {
+    generators.forEach(generator => {
+      const kinds = MULTI_KIND_GENERATORS.get(generator) || [generator(Math.random).kind];
+      kinds.forEach(kind => {
+        KIND_GENERATORS[kind] = generator;
+        KIND_SKILLS[kind] = skill;
+        if (!CAPABILITY_BY_KIND.has(kind)) {
+          CAPABILITY_BY_KIND.set(kind, {
+            label: SKILLS[skill],
+            origin: "Première 2026",
+            section: "Automatismes"
+          });
+        }
+      });
+    });
+  });
+
+  const SUBSKILLS = Object.keys(KIND_GENERATORS).map(id => {
+    return {
+      id,
+      skill: KIND_SKILLS[id],
+      ...CAPABILITY_BY_KIND.get(id)
+    };
+  });
+
   function selectGenerated(generators, mastery, rng, exclusions) {
     const excludedKeys = new Set(exclusions.keys || []);
     const excludedKinds = new Set(exclusions.kinds || []);
@@ -1413,5 +1456,38 @@
     return selectGenerated(generators.length ? generators : SKILL_GENERATORS.proportions, mastery, rng, exclusions);
   }
 
-  return { SKILLS, GENERATORS, SKILL_GENERATORS, PROGRAMME_2026, generate, generateForSkills, fingerprint, canonicalChoice, validateQuestion, affineExpression, linearFactor, formatNumber };
+  function generateForKinds(kinds, mastery = {}, rng = Math.random, exclusions = {}) {
+    const generators = kinds.map(kind => KIND_GENERATORS[kind]).filter(Boolean);
+    const wanted = new Set(kinds);
+    let question;
+    let attempts = 0;
+    do {
+      question = selectGenerated(generators.length ? generators : SKILL_GENERATORS.proportions, mastery, rng, exclusions);
+      attempts += 1;
+    } while (generators.length && !wanted.has(question.kind) && attempts < 50);
+    return question;
+  }
+
+  function subskillForQuestion(question) {
+    return SUBSKILLS.find(subskill => subskill.id === question?.kind) || null;
+  }
+
+  return {
+    SKILLS,
+    GENERATORS,
+    SKILL_GENERATORS,
+    KIND_GENERATORS,
+    SUBSKILLS,
+    PROGRAMME_2026,
+    generate,
+    generateForSkills,
+    generateForKinds,
+    subskillForQuestion,
+    fingerprint,
+    canonicalChoice,
+    validateQuestion,
+    affineExpression,
+    linearFactor,
+    formatNumber
+  };
 });

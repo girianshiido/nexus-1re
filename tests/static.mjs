@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { access, readFile } from "node:fs/promises";
 
-const [html, app, styles, manifestText, serviceWorker] = await Promise.all([
+const [html, app, learning, styles, manifestText, serviceWorker] = await Promise.all([
   readFile(new URL("../index.html", import.meta.url), "utf8"),
   readFile(new URL("../app.js", import.meta.url), "utf8"),
+  readFile(new URL("../learning-model.js", import.meta.url), "utf8"),
   readFile(new URL("../styles.css", import.meta.url), "utf8"),
   readFile(new URL("../manifest.webmanifest", import.meta.url), "utf8"),
   readFile(new URL("../service-worker.js", import.meta.url), "utf8")
@@ -15,7 +16,7 @@ assert.equal(ids.size, [...html.matchAll(/\bid="([^"]+)"/g)].length, "les identi
 const requiredIds = [...app.matchAll(/\$\("#([^"]+)"\)/g)].map(match => match[1]);
 for (const id of requiredIds) assert.ok(ids.has(id), `élément #${id} manquant dans index.html`);
 
-assert.match(html, /question-engine\.js[^]*game-model\.js[^]*app\.js/, "les scripts doivent être chargés dans le bon ordre");
+assert.match(html, /question-engine\.js[^]*learning-model\.js[^]*game-model\.js[^]*app\.js/, "les scripts doivent être chargés dans le bon ordre");
 assert.match(html, /viewport-fit=cover/, "la vue mobile doit être configurée");
 assert.match(html, /maximum-scale=1/, "le zoom par pincement doit être désactivé");
 assert.match(html, /user-scalable=no/, "le zoom tactile doit être verrouillé");
@@ -38,6 +39,14 @@ assert.match(app, /EVENT_WINDOW_MS/, "les perturbations doivent avoir une durée
 assert.match(app, /workshopReveal/, "les ateliers doivent être révélés progressivement");
 assert.match(styles, /#event-next:not\(\[hidden\]\)[^]*position:\s*fixed/, "l'action de fin d'intervention doit rester visible");
 assert.match(html, /id="reset-mobile-button"/, "la réinitialisation doit être disponible dans l'onglet Réseau sur mobile");
+assert.equal((html.match(/id="calibration-open-upgrades"/g) || []).length, 1, "les protocoles permanents doivent avoir un seul point d'accès");
+assert.doesNotMatch(html, /calibration-open-network|id="calibration-open"/, "les protocoles ne doivent pas être dupliqués dans le Réseau ou la barre de cycle");
+assert.match(html, /Diagnostic · 12 questions/, "le diagnostic adaptatif doit être accessible");
+assert.match(html, /Automatismes épreuve · 12 QCM/, "le mode automatismes de l'épreuve doit être accessible");
+assert.match(app, /recordAnswer/, "chaque réponse doit alimenter le modèle d'apprentissage");
+assert.match(app, /startLearningSession/, "les parcours ciblés doivent être câblés");
+assert.match(learning, /remedialAt/, "une erreur doit programmer une reprise différée");
+assert.match(learning, /stageFor/, "les niveaux de consolidation doivent être calculés");
 assert.match(html, /Programme de première technologique 2026/, "le dialogue de couverture 2026 doit être présent");
 assert.match(html, /0\/12/, "les douze ateliers doivent être annoncés dès le chargement");
 assert.match(serviceWorker, /event\.request\.mode === "navigate"/, "les navigations de l'application installée doivent être actualisées en priorité");

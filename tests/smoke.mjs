@@ -143,4 +143,4 @@ for (const capability of capabilities) {
 }
 assert.ok(!JSON.stringify(engine.PROGRAMME_2026).includes("STD2A"), "la géométrie spécifique à STD2A ne doit pas entrer dans les générateurs STI2D");
 
-console.log(`${validatedQuestions} questions générées et validées dans 56 formats.`);
+console.log(`${validatedQuestions} questions générées et validées dans ${generatedKinds.size} formats.`);

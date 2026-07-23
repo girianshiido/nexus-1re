@@ -13,7 +13,7 @@
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon-64.png">
     <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
-    <link rel="stylesheet" href="styles.css?v=11">
+    <link rel="stylesheet" href="styles.css?v=12">
   </head>
   <body>
     <div class="ambient ambient-a"></div>
@@ -58,9 +58,9 @@
           <span class="progress-track"><span id="cycle-progress-bar"></span></span>
         </span>
       </button>
-      <button id="calibration-open" class="cycle-strip-action" type="button">
-        <span id="calibration-value">0 pt</span><strong>Protocoles</strong>
-      </button>
+      <div class="cycle-strip-action" aria-label="Points d'étalonnage disponibles">
+        <span id="calibration-value">0 pt</span><strong>Étalonnage</strong>
+      </div>
     </section>
 
     <article id="event-card" class="event-card" hidden aria-live="polite">
@@ -155,7 +155,6 @@
               <h1 id="network-title">Réseau pédagogique</h1>
               <p>Étalonne le laboratoire quand le cycle est assez avancé. La maîtrise et les protocoles acquis sont conservés.</p>
             </div>
-            <button id="calibration-open-network" class="secondary-button" type="button">Ouvrir les protocoles</button>
           </div>
 
           <div class="network-cycle">
@@ -169,10 +168,37 @@
 
           <div class="network-summary">
             <article><span>Ateliers actifs</span><strong id="owned-total">0</strong></article>
-            <article><span>Acquis conservés</span><strong id="mastery-total">0</strong></article>
+            <article><span>Notions maîtrisées</span><strong id="mastery-total">0/57</strong></article>
             <article><span>Précision</span><strong id="accuracy-value">—</strong></article>
             <article><span>Meilleure série</span><strong id="best-streak">0</strong></article>
           </div>
+
+          <section class="learning-panel" aria-labelledby="learning-title">
+            <div class="learning-heading">
+              <div>
+                <p class="eyebrow">Parcours adaptatif</p>
+                <h2 id="learning-title">Ta progression mathématique</h2>
+                <p id="learning-recommendation">Commence par un diagnostic pour repérer les notions à travailler.</p>
+              </div>
+              <div class="learning-actions">
+                <button id="diagnostic-button" class="secondary-button" type="button">Diagnostic · 12 questions</button>
+                <button id="review-button" class="primary-button" type="button">Réviser maintenant · 6 questions</button>
+                <button id="exam-button" class="secondary-button" type="button">Automatismes épreuve · 12 QCM</button>
+              </div>
+            </div>
+            <div id="learning-stage-summary" class="learning-stage-summary"></div>
+            <div class="learning-columns">
+              <div>
+                <h3>Priorités du moment</h3>
+                <div id="learning-priorities" class="learning-priorities"></div>
+              </div>
+              <div>
+                <h3>S'entraîner par atelier</h3>
+                <div id="learning-workshops" class="learning-workshops"></div>
+              </div>
+            </div>
+            <p class="exam-note">Le mode épreuve reprend la partie automatismes des sujets zéro technologiques : 12 QCM, sans calculatrice, notés sur 6 points. Il ne simule pas les exercices de la seconde partie.</p>
+          </section>
 
           <div class="network-detail">
             <div class="active-effect">
@@ -202,8 +228,8 @@
           <div><p class="eyebrow" id="event-kicker">Perturbation</p><h2 id="event-dialog-title">Intervention</h2></div>
           <strong id="event-score">0/1</strong>
         </div>
-        <div class="question-meta"><span id="skill-chip" class="skill-chip">Proportions</span><span id="timer-label">Réfléchis</span></div>
-        <div class="timer-track"><span id="timer-bar"></span></div>
+        <div id="question-meta" class="question-meta"><span id="skill-chip" class="skill-chip">Proportions</span><span id="timer-label">Réfléchis</span></div>
+        <div id="question-timer-track" class="timer-track"><span id="timer-bar"></span></div>
         <div id="question-visual" class="question-visual" hidden></div>
         <p id="question-text" class="question-text"></p>
         <div id="answers" class="answers"></div>
@@ -226,7 +252,8 @@
           <li><b>Change d'onglet</b> pour acheter des ateliers, financer leurs améliorations ou suivre le réseau sans encombrer le noyau.</li>
           <li><b>Découvre les ateliers progressivement</b> : le suivant apparaît lorsque tu achètes le dernier atelier accessible.</li>
           <li><b>Interviens lors des perturbations</b>. Leur bandeau indique le flux à gagner et disparaît si tu laisses le compte à rebours se terminer.</li>
-          <li><b>Étalonne le réseau</b> lorsque la production ralentit : tu conserves ta maîtrise et dépenses les points gagnés dans des protocoles permanents.</li>
+          <li><b>Ouvre le Réseau</b> pour lancer un diagnostic, réviser les notions fragiles ou t'entraîner au format automatismes de l'épreuve.</li>
+          <li><b>Étalonne le réseau</b> lorsque la production ralentit : tu conserves ta progression pédagogique et dépenses ensuite les points gagnés dans les protocoles permanents de l'onglet Améliorations.</li>
         </ol>
         <p class="dialog-note">Répondre vite améliore la récompense, mais une réponse juste reste toujours utile. Une erreur ne retire jamais de flux.</p>
         <button class="primary-button full-button" value="close">J'ai compris</button>
@@ -272,8 +299,9 @@
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-    <script src="question-engine.js?v=10"></script>
+    <script src="question-engine.js?v=11"></script>
+    <script src="learning-model.js?v=1"></script>
     <script src="game-model.js?v=3"></script>
-    <script src="app.js?v=13"></script>
+    <script src="app.js?v=14"></script>
   </body>
 </html>

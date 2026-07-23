@@ -2,8 +2,9 @@
   "use strict";
 
   const Engine = window.QuestionEngine;
+  const Learning = window.NexusLearning;
   const Model = window.NexusModel;
-  if (!Engine || !Model) throw new Error("Les modules du jeu n'ont pas été chargés.");
+  if (!Engine || !Learning || !Model) throw new Error("Les modules du jeu n'ont pas été chargés.");
 
   const SAVE_KEY = "nexus-sti2d-laboratoire-v2";
   const FAST_TIME = 8000;
@@ -82,8 +83,6 @@
     tabButtons: [...document.querySelectorAll("[data-tab]")],
     views: [...document.querySelectorAll("[data-view]")],
     cycleTabShortcut: $("#cycle-tab-shortcut"),
-    calibrationOpen: $("#calibration-open"),
-    calibrationOpenNetwork: $("#calibration-open-network"),
     calibrationOpenUpgrades: $("#calibration-open-upgrades"),
     calibrationDialog: $("#calibration-dialog"),
     calibrationClose: $("#calibration-close"),
@@ -99,6 +98,8 @@
     skillChip: $("#skill-chip"),
     timerLabel: $("#timer-label"),
     timerBar: $("#timer-bar"),
+    questionMeta: $("#question-meta"),
+    questionTimerTrack: $("#question-timer-track"),
     questionVisual: $("#question-visual"),
     questionText: $("#question-text"),
     answers: $("#answers"),
@@ -106,6 +107,13 @@
     reportQuestion: $("#report-question"),
     questionReference: $("#question-reference"),
     eventNext: $("#event-next"),
+    diagnosticButton: $("#diagnostic-button"),
+    reviewButton: $("#review-button"),
+    examButton: $("#exam-button"),
+    learningRecommendation: $("#learning-recommendation"),
+    learningStageSummary: $("#learning-stage-summary"),
+    learningPriorities: $("#learning-priorities"),
+    learningWorkshops: $("#learning-workshops"),
     resetButton: $("#reset-button"),
     resetMobileButton: $("#reset-mobile-button"),
     confirmDialog: $("#confirm-dialog"),
@@ -120,10 +128,12 @@
     const workshops = {};
     const workshopUpgrades = {};
     const mastery = {};
+    const masteryFloor = {};
     Model.WORKSHOPS.forEach(workshop => {
       workshops[workshop.id] = 0;
       workshopUpgrades[workshop.id] = 0;
       mastery[workshop.id] = 0;
+      masteryFloor[workshop.id] = 0;
     });
     const calibrationUpgrades = {};
     Model.CALIBRATION_UPGRADES.forEach(upgrade => { calibrationUpgrades[upgrade.id] = 0; });
@@ -141,6 +151,7 @@
       workshops,
       workshopUpgrades,
       mastery,
+      masteryFloor,
       totalAnswered: 0,
       totalCorrect: 0,
       currentStreak: 0,
@@ -157,6 +168,10 @@
       questionReports: [],
       activeTab: "core",
       workshopReveal: 1,
+      learning: {},
+      learningSequence: 0,
+      diagnosticsCompleted: 0,
+      examBest: null,
       lastSeen: Date.now()
     };
   }
@@ -170,6 +185,9 @@
       merged.workshops = { ...initial.workshops, ...(parsed.workshops || {}) };
       merged.workshopUpgrades = { ...initial.workshopUpgrades, ...(parsed.workshopUpgrades || {}) };
       merged.mastery = { ...initial.mastery, ...(parsed.mastery || {}) };
+      const hasAdaptiveRecords = parsed.learning && Object.keys(parsed.learning).length > 0;
+      const previousMastery = hasAdaptiveRecords ? {} : (parsed.mastery || {});
+      merged.masteryFloor = { ...initial.masteryFloor, ...previousMastery, ...(parsed.masteryFloor || {}) };
       merged.calibrationUpgrades = { ...initial.calibrationUpgrades, ...(parsed.calibrationUpgrades || {}) };
       Model.WORKSHOPS.forEach(workshop => {
         merged.workshopUpgrades[workshop.id] = Math.min(Model.MILESTONES.length, Math.max(0, Math.floor(Number(merged.workshopUpgrades[workshop.id]) || 0)));
@@ -180,6 +198,11 @@
       merged.recentKeys = Array.isArray(parsed.recentKeys) ? parsed.recentKeys.slice(-12) : [];
       merged.recentKinds = Array.isArray(parsed.recentKinds) ? parsed.recentKinds.slice(-2) : [];
       merged.questionReports = Array.isArray(parsed.questionReports) ? parsed.questionReports.slice(-REPORT_LIMIT) : [];
+      merged.learning = parsed.learning && typeof parsed.learning === "object" ? parsed.learning : {};
+      Object.keys(merged.learning).forEach(kind => { merged.learning[kind] = Learning.normalizeRecord(merged.learning[kind]); });
+      merged.learningSequence = Math.max(0, Math.floor(Number(parsed.learningSequence) || 0));
+      merged.diagnosticsCompleted = Math.max(0, Math.floor(Number(parsed.diagnosticsCompleted) || 0));
+      merged.examBest = Number.isFinite(Number(parsed.examBest)) ? Math.max(0, Math.min(6, Number(parsed.examBest))) : null;
       merged.activeTab = TABS.includes(parsed.activeTab) ? parsed.activeTab : "core";
       if (Number.isFinite(parsed.workshopReveal)) {
         merged.workshopReveal = Math.min(Model.WORKSHOPS.length - 1, Math.max(1, Math.floor(parsed.workshopReveal)));
@@ -208,6 +231,7 @@
   let lastFrame = performance.now();
   let lastRender = 0;
   let lastSave = 0;
+  let lastLearningRender = 0;
 
   function format(value, options = {}) {
     if (!Number.isFinite(value)) return "∞";
@@ -222,6 +246,23 @@
   }
 
   function now() { return Date.now(); }
+  function refreshMasteryScores() {
+    Model.WORKSHOPS.forEach(workshop => {
+      const adaptiveScore = Learning.scoreForSkill(Engine.SUBSKILLS, state.learning, workshop.id, now());
+      state.mastery[workshop.id] = Math.max(Number(state.masteryFloor[workshop.id]) || 0, adaptiveScore);
+    });
+  }
+  function skillStageSummary(skill) {
+    const subskills = Engine.SUBSKILLS.filter(item => item.skill === skill);
+    const counts = Learning.summarize(subskills, state.learning, now());
+    if (counts.review) return `${counts.review} à réviser`;
+    if (counts.fragile) return `${counts.fragile} fragile${counts.fragile > 1 ? "s" : ""}`;
+    if (counts.mastered === subskills.length && subskills.length) return "Atelier maîtrisé";
+    if (counts.mastered) return `${counts.mastered}/${subskills.length} maîtrisées`;
+    if (counts.training) return "En entraînement";
+    return "À découvrir";
+  }
+  refreshMasteryScores();
   function isHyper() { return state.hyperUntil > now(); }
   function isBoosted() { return state.boostUntil > now(); }
   function hyperStats() { return Model.hyperStats(state.calibrationUpgrades); }
@@ -662,10 +703,14 @@
     }
     if (!pendingEvent) return;
     eventRun = {
+      mode: "event",
       event: pendingEvent,
       index: 0,
       correct: 0,
-      fast: 0
+      fast: 0,
+      results: [],
+      usedKinds: [],
+      usedSkills: []
     };
     dom.eventKicker.textContent = `Perturbation · ${pendingEvent.questionCount} ${pendingEvent.questionCount === 1 ? "question" : "questions"}`;
     dom.eventDialogTitle.textContent = pendingEvent.title;
@@ -674,24 +719,116 @@
     nextQuestion();
   }
 
+  function learningSessionDefinition(mode, targetSkill) {
+    const allSkills = Model.WORKSHOPS.map(workshop => workshop.id);
+    if (mode === "diagnostic") {
+      return {
+        title: "Diagnostic du réseau",
+        kicker: "Parcours adaptatif · 12 questions",
+        questionCount: 12,
+        skills: allSkills,
+        description: "Une question par atelier pour repérer tes priorités."
+      };
+    }
+    if (mode === "exam") {
+      return {
+        title: "Automatismes — format épreuve",
+        kicker: "Entraînement · 12 QCM · sans calculatrice",
+        questionCount: 12,
+        skills: allSkills,
+        description: "Une seule réponse par question, puis un bilan noté sur 6."
+      };
+    }
+    if (mode === "targeted") {
+      const workshop = Model.workshopById(targetSkill);
+      return {
+        title: workshop ? `Entraînement — ${workshop.name}` : "Entraînement ciblé",
+        kicker: "Parcours adaptatif · 6 questions",
+        questionCount: 6,
+        skills: [targetSkill],
+        description: "Les sous-notions fragiles et à réviser passent en priorité."
+      };
+    }
+    return {
+      title: "Révision adaptative",
+      kicker: "Parcours adaptatif · 6 questions",
+      questionCount: 6,
+      skills: allSkills,
+      description: "Le réseau choisit les notions fragiles, dues ou encore inconnues."
+    };
+  }
+
+  function startLearningSession(mode, targetSkill = null) {
+    if (eventRun) {
+      if (!dom.eventDialog.open) dom.eventDialog.showModal();
+      showToast("Une session est déjà en cours.");
+      return;
+    }
+    const definition = learningSessionDefinition(mode, targetSkill);
+    eventRun = {
+      mode,
+      event: definition,
+      targetSkill,
+      index: 0,
+      correct: 0,
+      fast: 0,
+      results: [],
+      usedKinds: [],
+      usedSkills: [],
+      finished: false
+    };
+    dom.eventKicker.textContent = definition.kicker;
+    dom.eventDialogTitle.textContent = definition.title;
+    dom.eventNext.hidden = true;
+    dom.eventDialog.showModal();
+    nextQuestion();
+  }
+
+  function selectQuestionSubskill() {
+    const run = eventRun;
+    const available = Engine.SUBSKILLS.filter(subskill => run.event.skills.includes(subskill.skill));
+    const unrepresentedSkills = run.event.skills.filter(skill => !run.usedSkills.includes(skill));
+    const avoidKinds = run.mode === "event" ? state.recentKinds : run.usedKinds.slice(-8);
+    return Learning.pickSubskill(available, state.learning, state.learningSequence, Math.random, {
+      avoidKinds,
+      preferUnusedSkills: ["diagnostic", "exam"].includes(run.mode) ? unrepresentedSkills : [],
+      nowValue: now()
+    }) || available[0];
+  }
+
+  function showQuestionInterface() {
+    dom.questionMeta.hidden = false;
+    dom.questionTimerTrack.hidden = eventRun.mode !== "event";
+    dom.questionText.hidden = false;
+    dom.answers.hidden = false;
+    dom.reportQuestion.closest(".question-tools").hidden = false;
+  }
+
   function nextQuestion() {
     if (!eventRun) return;
     eventRun.index += 1;
     currentAnswered = false;
-    currentQuestion = Engine.generateForSkills(
-      eventRun.event.skills,
+    const subskill = selectQuestionSubskill();
+    currentQuestion = Engine.generateForKinds(
+      [subskill.id],
       state.mastery,
       Math.random,
       { keys: state.recentKeys, kinds: state.recentKinds }
     );
+    eventRun.usedKinds.push(currentQuestion.kind);
+    eventRun.usedSkills.push(currentQuestion.skill);
     const key = Engine.fingerprint(currentQuestion);
     state.recentKeys.push(key);
     state.recentKinds.push(currentQuestion.kind);
     if (state.recentKeys.length > 12) state.recentKeys.shift();
     if (state.recentKinds.length > 2) state.recentKinds.shift();
 
-    dom.eventScore.textContent = `${eventRun.correct}/${eventRun.event.questionCount}`;
+    showQuestionInterface();
+    dom.eventScore.textContent = eventRun.mode === "exam"
+      ? `${eventRun.index}/${eventRun.event.questionCount}`
+      : `${eventRun.correct}/${eventRun.event.questionCount}`;
     dom.skillChip.textContent = Engine.SKILLS[currentQuestion.skill];
+    dom.timerLabel.textContent = eventRun.mode === "exam" ? "Sans calculatrice" : eventRun.mode === "event" ? "Réfléchis" : "Sans pénalité de temps";
     dom.questionText.textContent = currentQuestion.prompt;
     const reference = questionReference(currentQuestion);
     const alreadyReported = state.questionReports.some(report => report.reference === reference);
@@ -721,36 +858,68 @@
     currentAnswered = true;
     const elapsed = performance.now() - questionStartedAt;
     const correct = index === currentQuestion.answer;
+    const subskill = Engine.subskillForQuestion(currentQuestion);
     state.totalAnswered += 1;
+    state.learningSequence += 1;
+    state.learning[currentQuestion.kind] = Learning.recordAnswer(
+      state.learning[currentQuestion.kind],
+      correct,
+      state.learningSequence,
+      now(),
+      Math.random
+    );
+    refreshMasteryScores();
     if (correct) {
       state.totalCorrect += 1;
       state.currentStreak += 1;
       state.bestStreak = Math.max(state.bestStreak, state.currentStreak);
-      state.mastery[currentQuestion.skill] = (state.mastery[currentQuestion.skill] || 0) + 1;
       eventRun.correct += 1;
-      if (elapsed <= FAST_TIME) eventRun.fast += 1;
-      playSound("correct");
+      if (eventRun.mode === "event" && elapsed <= FAST_TIME) eventRun.fast += 1;
+      playSound(eventRun.mode === "exam" ? "buy" : "correct");
     } else {
       state.currentStreak = 0;
-      playSound("wrong");
+      playSound(eventRun.mode === "exam" ? "buy" : "wrong");
     }
 
+    eventRun.results.push({
+      kind: currentQuestion.kind,
+      skill: currentQuestion.skill,
+      label: subskill?.label || Engine.SKILLS[currentQuestion.skill],
+      correct,
+      selected: currentQuestion.choices[index],
+      expected: currentQuestion.choices[currentQuestion.answer],
+      explanation: currentQuestion.explanation
+    });
     [...dom.answers.children].forEach((button, buttonIndex) => {
       button.disabled = true;
-      if (buttonIndex === currentQuestion.answer) button.classList.add("correct");
-      if (buttonIndex === index && !correct) button.classList.add("wrong");
+      if (eventRun.mode !== "exam") {
+        if (buttonIndex === currentQuestion.answer) button.classList.add("correct");
+        if (buttonIndex === index && !correct) button.classList.add("wrong");
+      } else if (buttonIndex === index) {
+        button.classList.add("selected");
+      }
     });
     dom.feedback.hidden = false;
-    dom.feedback.classList.toggle("wrong", !correct);
-    const speedText = correct && elapsed <= FAST_TIME ? " Réponse rapide : récompense améliorée." : "";
-    dom.feedback.innerHTML = `<strong>${correct ? "Bonne réponse." : "Pas cette fois."}</strong> ${currentQuestion.explanation}${speedText}`;
+    dom.feedback.classList.toggle("wrong", eventRun.mode !== "exam" && !correct);
+    if (eventRun.mode === "exam") {
+      dom.feedback.innerHTML = "<strong>Réponse enregistrée.</strong> La correction sera donnée dans le bilan final.";
+    } else {
+      const speedText = eventRun.mode === "event" && correct && elapsed <= FAST_TIME ? " Réponse rapide : récompense améliorée." : "";
+      const returnText = !correct ? " Cette sous-notion reviendra dans quelques questions avec de nouveaux nombres." : "";
+      dom.feedback.innerHTML = `<strong>${correct ? "Bonne réponse." : "Pas cette fois."}</strong> ${currentQuestion.explanation}${speedText}<small class="learning-rule">Point travaillé : ${subskill?.label || Engine.SKILLS[currentQuestion.skill]}.${returnText}</small>`;
+    }
     const reference = questionReference(currentQuestion);
     const alreadyReported = state.questionReports.some(report => report.reference === reference);
     dom.reportQuestion.disabled = alreadyReported;
     dom.reportQuestion.textContent = alreadyReported ? "Question signalée" : "Signaler cette question";
-    dom.eventScore.textContent = `${eventRun.correct}/${eventRun.event.questionCount}`;
+    dom.eventScore.textContent = eventRun.mode === "exam"
+      ? `${eventRun.index}/${eventRun.event.questionCount}`
+      : `${eventRun.correct}/${eventRun.event.questionCount}`;
     dom.eventNext.hidden = false;
-    dom.eventNext.textContent = eventRun.index >= eventRun.event.questionCount ? "Terminer l'intervention" : "Question suivante";
+    dom.eventNext.textContent = eventRun.index >= eventRun.event.questionCount
+      ? (eventRun.mode === "event" ? "Terminer l'intervention" : "Voir le bilan")
+      : "Question suivante";
+    renderLearning();
   }
 
   function rewardEvent(run) {
@@ -780,8 +949,18 @@
 
   function advanceEvent() {
     if (!eventRun || !currentAnswered) return;
+    if (eventRun.finished) {
+      eventRun = null;
+      currentQuestion = null;
+      dom.eventDialog.close();
+      return;
+    }
     if (eventRun.index < eventRun.event.questionCount) {
       nextQuestion();
+      return;
+    }
+    if (eventRun.mode !== "event") {
+      showLearningSummary(eventRun);
       return;
     }
     rewardEvent(eventRun);
@@ -790,6 +969,38 @@
     scheduleNextEvent();
     dom.eventDialog.close();
     renderWorkshops();
+  }
+
+  function showLearningSummary(run) {
+    run.finished = true;
+    currentQuestion = null;
+    dom.questionMeta.hidden = true;
+    dom.questionTimerTrack.hidden = true;
+    dom.questionVisual.hidden = true;
+    dom.questionText.hidden = true;
+    dom.answers.hidden = true;
+    dom.reportQuestion.closest(".question-tools").hidden = true;
+    const score = run.correct / run.event.questionCount;
+    if (run.mode === "diagnostic") state.diagnosticsCompleted += 1;
+    if (run.mode === "exam") {
+      const mark = run.correct / 2;
+      state.examBest = state.examBest === null ? mark : Math.max(state.examBest, mark);
+    }
+    const mistakes = run.results.filter(result => !result.correct);
+    const mistakeSummary = mistakes.length
+      ? `<div class="session-corrections"><strong>À reprendre</strong>${mistakes.slice(0, 4).map(result => `<p><b>${result.label}</b> — réponse attendue : ${result.expected}. ${result.explanation}</p>`).join("")}</div>`
+      : "<p>Tout est juste : ces réussites devront encore être confirmées à distance pour devenir durablement maîtrisées.</p>";
+    const markText = run.mode === "exam"
+      ? `<strong class="session-mark">${String((run.correct / 2).toFixed(1)).replace(".0", "").replace(".", ",")} / 6</strong>`
+      : `<strong class="session-mark">${run.correct} / ${run.event.questionCount}</strong>`;
+    dom.eventScore.textContent = run.mode === "exam" ? `${String((run.correct / 2).toFixed(1)).replace(".0", "").replace(".", ",")}/6` : `${run.correct}/${run.event.questionCount}`;
+    dom.feedback.hidden = false;
+    dom.feedback.classList.toggle("wrong", score < 0.6);
+    dom.feedback.innerHTML = `${markText}<h3>${score >= 0.85 ? "Très bon bilan" : score >= 0.6 ? "Bilan encourageant" : "Des priorités sont identifiées"}</h3>${mistakeSummary}`;
+    dom.eventNext.textContent = "Fermer le bilan";
+    dom.eventNext.hidden = false;
+    save();
+    renderLearning();
   }
 
   function showConfirm(mode) {
@@ -843,9 +1054,11 @@
     pendingEvent = null;
     eventRun = null;
     currentQuestion = null;
+    refreshMasteryScores();
     renderWorkshops();
     renderWorkshopUpgrades();
     renderCalibrationUpgrades();
+    renderLearning();
     save();
     showToast("Nouvelle partie créée.");
   }
@@ -922,7 +1135,7 @@
       card.classList.toggle("unaffordable", !quote.quantity && !(upgradeStatus.unlocked && state.flux >= upgradeStatus.cost));
       card.querySelector(`#count-bg-${workshop.id}`).textContent = count;
       card.querySelector(`#rate-${workshop.id}`).innerHTML = `<b>${format(rate)}/s</b>`;
-      card.querySelector(`#mastery-${workshop.id}`).textContent = `Maîtrise ${state.mastery[workshop.id] || 0}`;
+      card.querySelector(`#mastery-${workshop.id}`).textContent = skillStageSummary(workshop.id);
       card.querySelector(`#milestone-${workshop.id}`).textContent = upgradeStatus.completed
         ? "Toutes les améliorations achetées"
         : upgradeStatus.unlocked
@@ -1003,6 +1216,64 @@
     });
   }
 
+  function renderLearning() {
+    const nowValue = now();
+    const counts = Learning.summarize(Engine.SUBSKILLS, state.learning, nowValue);
+    const stageOrder = ["mastered", "review", "fragile", "training", "discovery"];
+    dom.learningStageSummary.innerHTML = stageOrder.map(stage => `
+      <article class="learning-stage stage-${stage}">
+        <strong>${counts[stage]}</strong>
+        <span>${Learning.STAGES[stage].label}</span>
+      </article>
+    `).join("");
+
+    const activePriorities = Engine.SUBSKILLS
+      .map(subskill => ({
+        ...subskill,
+        stage: Learning.stageFor(state.learning[subskill.id], nowValue),
+        priority: Learning.priority(state.learning[subskill.id], state.learningSequence, nowValue)
+      }))
+      .filter(item => item.stage !== "mastered")
+      .sort((a, b) => b.priority - a.priority)
+      .slice(0, 5);
+    dom.learningPriorities.innerHTML = activePriorities.length
+      ? activePriorities.map(item => `
+        <article>
+          <div><strong>${item.label}</strong><small>${Engine.SKILLS[item.skill]}</small></div>
+          <span class="stage-badge stage-${item.stage}">${Learning.STAGES[item.stage].label}</span>
+        </article>
+      `).join("")
+      : "<p class=\"learning-empty\">Aucune priorité urgente : consolide maintenant à distance.</p>";
+
+    dom.learningWorkshops.innerHTML = Model.WORKSHOPS
+      .filter((workshop, index) => index <= state.workshopReveal)
+      .map(workshop => {
+        const subskills = Engine.SUBSKILLS.filter(item => item.skill === workshop.id);
+        const skillCounts = Learning.summarize(subskills, state.learning, nowValue);
+        return `
+          <article>
+            <div><strong>${workshop.name}</strong><small>${skillCounts.mastered}/${subskills.length} maîtrisées · ${skillStageSummary(workshop.id)}</small></div>
+            <button class="text-button" data-practice-skill="${workshop.id}" type="button">S'entraîner</button>
+          </article>`;
+      }).join("");
+
+    if (!state.diagnosticsCompleted) {
+      dom.learningRecommendation.textContent = "Diagnostic conseillé : 12 questions couvrent les 12 ateliers et fixent les premières priorités.";
+    } else if (counts.review) {
+      dom.learningRecommendation.textContent = `${counts.review} ${counts.review === 1 ? "notion est prête" : "notions sont prêtes"} pour une révision espacée.`;
+    } else if (counts.fragile) {
+      dom.learningRecommendation.textContent = `${counts.fragile} ${counts.fragile === 1 ? "notion fragile va revenir" : "notions fragiles vont revenir"} avec de nouveaux nombres.`;
+    } else {
+      dom.learningRecommendation.textContent = "Le parcours alterne découverte, entraînement et consolidation espacée.";
+    }
+    dom.diagnosticButton.textContent = state.diagnosticsCompleted
+      ? "Refaire un diagnostic · 12 questions"
+      : "Diagnostic · 12 questions";
+    dom.examButton.textContent = state.examBest === null
+      ? "Automatismes épreuve · 12 QCM"
+      : `Automatismes épreuve · record ${String(state.examBest).replace(".", ",")}/6`;
+  }
+
   function renderEvent(nowValue) {
     if (pendingEvent && !eventRun && nowValue >= pendingEvent.expiresAt) {
       pendingEvent = null;
@@ -1010,7 +1281,7 @@
       showToast("La perturbation s'est dissipée. Un nouveau signal apparaîtra plus tard.");
     }
     if (!pendingEvent && nowValue >= state.nextEventAt && !eventRun) createPendingEvent();
-    const visibleEvent = eventRun?.event || pendingEvent;
+    const visibleEvent = eventRun?.mode === "event" ? eventRun.event : pendingEvent;
     dom.eventCard.hidden = !visibleEvent;
     if (visibleEvent) {
       dom.eventTitle.textContent = visibleEvent.title;
@@ -1021,8 +1292,8 @@
           ? " · +1 atelier"
           : "";
       dom.eventReward.textContent = `Si réussi : +${format(visibleEvent.fluxReward)} flux${bonus}`;
-      dom.eventStart.textContent = eventRun ? "Reprendre" : "Intervenir";
-      if (eventRun) {
+      dom.eventStart.textContent = eventRun?.mode === "event" ? "Reprendre" : "Intervenir";
+      if (eventRun?.mode === "event") {
         dom.eventTimeLabel.textContent = "En cours";
         dom.eventTimeBar.style.width = "100%";
         dom.eventCountdown.textContent = "Intervention en cours — le laboratoire continue de produire.";
@@ -1044,7 +1315,7 @@
   }
 
   function renderQuestionTimer() {
-    if (!dom.eventDialog.open || !currentQuestion || currentAnswered) return;
+    if (!dom.eventDialog.open || !currentQuestion || currentAnswered || eventRun?.mode !== "event") return;
     const elapsed = performance.now() - questionStartedAt;
     const remaining = Math.max(0, 1 - elapsed / MAX_QUESTION_TIME);
     dom.timerBar.style.width = `${remaining * 100}%`;
@@ -1059,7 +1330,7 @@
     const owned = Model.totalOwned(state.workshops);
     const cycleTarget = Model.cycleTarget(state.cycle);
     const cycleGain = Model.cycleGain(state.cycleFlux, state.cycle);
-    const masteryTotal = Object.values(state.mastery).reduce((sum, value) => sum + Number(value || 0), 0);
+    const masteryCounts = Learning.summarize(Engine.SUBSKILLS, state.learning, nowValue);
     const unlocked = unlockedWorkshops();
     const click = clickValue();
     const availableCalibration = Model.availableCalibration(state.calibration, state.calibrationUpgrades);
@@ -1076,7 +1347,7 @@
     dom.cycleGain.textContent = plural(cycleGain, "point");
     dom.permanentMultiplier.textContent = `Production permanente ×${format(permanentMultiplier())}`;
     dom.cycleButton.disabled = cycleGain < 1;
-    dom.masteryTotal.textContent = masteryTotal;
+    dom.masteryTotal.textContent = `${masteryCounts.mastered}/${Engine.SUBSKILLS.length}`;
 
     dom.corePanel.classList.toggle("hyper", hyper);
     dom.clickGain.textContent = `+${format(click * (hyper ? cadence.multiplier : 1))} flux par clic${hyper ? ` · ×${format(cadence.multiplier)}` : ""}`;
@@ -1135,6 +1406,11 @@
       renderWorkshopUpgrades();
       lastRender = timestamp;
     }
+    if (timestamp - lastLearningRender > 10000) {
+      refreshMasteryScores();
+      renderLearning();
+      lastLearningRender = timestamp;
+    }
     if (timestamp - lastSave > 3000) {
       save();
       lastSave = timestamp;
@@ -1154,12 +1430,23 @@
   dom.eventStart.addEventListener("click", startEvent);
   dom.tabButtons.forEach(button => button.addEventListener("click", () => setActiveTab(button.dataset.tab)));
   dom.cycleTabShortcut.addEventListener("click", () => setActiveTab("network"));
-  dom.calibrationOpen.addEventListener("click", openCalibrationDialog);
-  dom.calibrationOpenNetwork.addEventListener("click", openCalibrationDialog);
   dom.calibrationOpenUpgrades.addEventListener("click", openCalibrationDialog);
   dom.calibrationClose.addEventListener("click", () => dom.calibrationDialog.close());
-  dom.eventClose.addEventListener("click", () => dom.eventDialog.close());
+  dom.eventClose.addEventListener("click", () => {
+    dom.eventDialog.close();
+    if (eventRun?.finished) {
+      eventRun = null;
+      currentQuestion = null;
+    }
+  });
   dom.eventNext.addEventListener("click", advanceEvent);
+  dom.diagnosticButton.addEventListener("click", () => startLearningSession("diagnostic"));
+  dom.reviewButton.addEventListener("click", () => startLearningSession("review"));
+  dom.examButton.addEventListener("click", () => startLearningSession("exam"));
+  dom.learningWorkshops.addEventListener("click", event => {
+    const button = event.target.closest("[data-practice-skill]");
+    if (button) startLearningSession("targeted", button.dataset.practiceSkill);
+  });
   dom.reportQuestion.addEventListener("click", reportCurrentQuestion);
   dom.cycleButton.addEventListener("click", () => showConfirm("cycle"));
   dom.resetButton.addEventListener("click", () => showConfirm("reset"));
@@ -1197,6 +1484,7 @@
   renderWorkshops();
   renderWorkshopUpgrades();
   renderCalibrationUpgrades();
+  renderLearning();
   render();
   showToast("Clique sur le noyau pour produire tes premiers flux.");
   requestAnimationFrame(frame);
