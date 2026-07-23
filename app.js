@@ -1098,25 +1098,25 @@
   function createWorkshopUpgradeCards() {
     const fragment = document.createDocumentFragment();
     Model.WORKSHOPS.forEach(workshop => {
-      const card = document.createElement("article");
+      const card = document.createElement("button");
+      card.type = "button";
       card.className = "upgrade-card";
       card.dataset.workshopUpgradeCard = workshop.id;
+      card.dataset.upgrade = workshop.id;
       card.innerHTML = `
         <div class="workshop-icon" aria-hidden="true">${workshop.icon}</div>
         <div class="upgrade-card-copy">
           <h2>${workshop.name}</h2>
-          <p id="upgrade-status-${workshop.id}">Premier palier à 10 unités</p>
-          <small id="upgrade-effect-${workshop.id}">Multiplicateur actuel ×1</small>
+          <p id="upgrade-status-${workshop.id}">Production doublée pour ce cycle</p>
+          <small id="upgrade-effect-${workshop.id}">Coût : 0 flux</small>
         </div>
-        <button class="workshop-upgrade" data-upgrade="${workshop.id}" type="button">
-          <span>Amélioration ×2</span><small>Débloquée au palier 10</small>
-        </button>`;
+        <span class="upgrade-card-action" aria-hidden="true">Récupérer</span>`;
       fragment.append(card);
     });
     dom.workshopUpgradeList.replaceChildren(fragment);
     dom.workshopUpgradeList.addEventListener("click", event => {
-      const button = event.target.closest("[data-upgrade]");
-      if (button) buyWorkshopUpgrade(button.dataset.upgrade);
+      const card = event.target.closest("[data-upgrade]");
+      if (card) buyWorkshopUpgrade(card.dataset.upgrade);
     });
   }
 
@@ -1161,21 +1161,10 @@
       const status = Model.workshopUpgradeStatus(workshop.id, count, level);
       const card = dom.workshopUpgradeList.querySelector(`[data-workshop-upgrade-card="${workshop.id}"]`);
       if (!card) return;
-      card.hidden = index > state.workshopReveal;
-      const button = card.querySelector(".workshop-upgrade");
-      card.classList.toggle("available", status.unlocked && !status.completed);
-      card.classList.toggle("completed", status.completed);
-      card.querySelector(`#upgrade-effect-${workshop.id}`).textContent = `Multiplicateur actuel ×${Math.pow(2, level)}`;
-      card.querySelector(`#upgrade-status-${workshop.id}`).textContent = status.completed
-        ? "Tous les paliers ont été financés"
-        : status.unlocked
-          ? `Palier ${status.milestone} atteint avec ${count} unités`
-          : `Prochain palier : ${count}/${status.milestone} unités`;
-      button.hidden = status.completed;
-      button.disabled = !status.unlocked || status.cost > state.flux;
-      button.classList.toggle("ready", status.unlocked && status.cost <= state.flux);
-      button.querySelector("span").textContent = status.unlocked ? `Doubler · niveau ${level + 1}` : "Amélioration ×2";
-      button.querySelector("small").textContent = status.unlocked ? `${format(status.cost)} flux` : `Débloquée au palier ${status.milestone}`;
+      const ready = index <= state.workshopReveal && status.unlocked && !status.completed && status.cost <= state.flux;
+      card.hidden = !ready;
+      card.querySelector(`#upgrade-effect-${workshop.id}`).textContent = `${format(status.cost)} flux · niveau ${level + 1}`;
+      card.querySelector(`#upgrade-status-${workshop.id}`).textContent = `Palier ${status.milestone} atteint : production ×2 pour ce cycle`;
     });
   }
 
