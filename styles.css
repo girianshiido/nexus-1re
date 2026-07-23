@@ -319,10 +319,13 @@ button:not(:disabled) { cursor: pointer; }
 .workshop-info p { margin-top: 4px; color: var(--muted); font-size: 10px; line-height: 1.4; }
 .workshop-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 7px; color: var(--muted); font-size: 9px; }
 .workshop-meta b { color: var(--green); }
-.workshop-buy { min-width: 96px; padding: 10px 10px; border: 1px solid rgba(102, 228, 231, 0.36); border-radius: 11px; color: var(--cyan); background: rgba(102, 228, 231, 0.07); font-size: 10px; font-weight: 800; }
+.workshop-buy { min-width: 96px; padding: 10px 10px; border: 1px solid rgba(255, 206, 92, 0.82); border-radius: 11px; color: #281b03; background: linear-gradient(145deg, #ffe98b, #f6b840); box-shadow: 0 5px 16px rgba(239, 171, 45, 0.22), inset 0 1px rgba(255, 255, 255, 0.5); font-size: 10px; font-weight: 900; text-shadow: 0 1px rgba(255, 255, 255, 0.28); transition: transform 140ms ease, filter 140ms ease, box-shadow 140ms ease; }
 .workshop-buy span, .workshop-buy small { display: block; }
-.workshop-buy small { margin-top: 2px; color: var(--muted); font-size: 9px; }
-.workshop-buy:disabled { cursor: default; border-color: var(--line); color: var(--muted); background: transparent; }
+.workshop-buy small { margin-top: 2px; color: rgba(40, 27, 3, 0.74); font-size: 9px; }
+.workshop-buy:not(:disabled):hover { filter: brightness(1.08); transform: translateY(-1px); box-shadow: 0 8px 22px rgba(239, 171, 45, 0.32), inset 0 1px rgba(255, 255, 255, 0.5); }
+.workshop-buy:not(:disabled):active { transform: translateY(1px) scale(0.98); }
+.workshop-buy:disabled { cursor: default; border-color: var(--line); color: var(--muted); background: transparent; box-shadow: none; text-shadow: none; }
+.workshop-buy:disabled small { color: var(--muted); }
 .workshop-upgrade { grid-column: 1 / -1; width: 100%; padding: 9px 12px; border: 1px solid rgba(196, 124, 255, 0.25); border-radius: 10px; color: #dbabff; background: rgba(196, 124, 255, 0.06); font-size: 9px; font-weight: 800; }
 .workshop-upgrade span, .workshop-upgrade small { display: inline; }
 .workshop-upgrade small { margin-left: 7px; color: var(--muted); font-size: 8px; }

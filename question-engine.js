@@ -72,6 +72,12 @@
     return String(value).split("").map(character => glyphs[character]).join("");
   }
 
+  function coefficientTimes(coefficient, term) {
+    if (coefficient === 1) return String(term);
+    if (coefficient === -1) return `−${term}`;
+    return `${coefficient} × ${term}`;
+  }
+
   function canonicalChoice(value) {
     const normalized = String(value)
       .trim()
@@ -849,9 +855,9 @@
       return {
         kind: "explicit-sequence-term",
         skill: "sequences",
-        prompt: `La suite est définie par uₙ = ${start} × ${ratio}ⁿ. Calculer u${subscript(rank)}.`,
+        prompt: `La suite est définie par uₙ = ${coefficientTimes(start, `${ratio}ⁿ`)}. Calculer u${subscript(rank)}.`,
         choices, answer,
-        explanation: `u${subscript(rank)} = ${start} × ${ratio}${superscript(rank)} = ${good}.`
+        explanation: `u${subscript(rank)} = ${coefficientTimes(start, `${ratio}${superscript(rank)}`)} = ${good}.`
       };
     }
     const start = randInt(-5, 8, rng);
@@ -1057,7 +1063,7 @@
       skill: "statistics",
       prompt: `Un ajustement affine d'un nuage est donné par y = ${affineExpression(slope, intercept)}. Quelle valeur estime-t-il pour x = ${input} ?`,
       choices, answer,
-      explanation: `On remplace x par ${input} : y = ${formatNumber(slope)} × ${input}${intercept === 0 ? "" : ` ${intercept > 0 ? "+" : "−"} ${Math.abs(intercept)}`} = ${formatNumber(good)}.`
+      explanation: `On remplace x par ${input} : y = ${coefficientTimes(slope, input)}${intercept === 0 ? "" : ` ${intercept > 0 ? "+" : "−"} ${Math.abs(intercept)}`} = ${formatNumber(good)}.`
     };
   }
 

@@ -40,6 +40,10 @@ const affineRandomValues = [0, 0.5, 0.5];
 const affineWithZero = engine.SKILL_GENERATORS.functions[1](() => affineRandomValues.shift() ?? 0.5);
 assert.match(affineWithZero.prompt, /f\(x\) = -4x\./, "la fonction affine ne doit pas afficher + 0");
 
+const explicitSequenceWithOne = engine.SKILL_GENERATORS.sequences[1](() => 0);
+assert.match(explicitSequenceWithOne.prompt, /uₙ = 2ⁿ/, "un coefficient 1 doit être omis devant une puissance");
+assert.doesNotMatch(explicitSequenceWithOne.prompt, /1 ×/, "aucune multiplication par 1 ne doit être affichée");
+
 const productRandomValues = [0.86, 0.5];
 const productWithZero = engine.GENERATORS.factory[0](() => productRandomValues.shift() ?? 0.5);
 assert.match(productWithZero.prompt, /Résoudre x\(x \+ 5\) = 0\./, "le facteur x + 0 doit être écrit x et placé en premier");
