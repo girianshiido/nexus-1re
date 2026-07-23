@@ -31,6 +31,7 @@ assert.ok(lineEquation.choices.every(choice => choice.startsWith("y = ")), "une 
 const variationQuestion = engine.SKILL_GENERATORS.functions[7](Math.random);
 assert.match(variationQuestion.visual, /<svg class="variation-svg"/, "un tableau de variations doit utiliser un dessin vectoriel");
 assert.match(variationQuestion.visual, /marker-end="url\(#variation-arrow-/, "les variations doivent être représentées par de vraies flèches");
+assert.match(variationQuestion.visual, /x="221"/, "la valeur centrale doit être éloignée de la pointe de flèche");
 assert.equal(engine.canonicalChoice("1/2"), engine.canonicalChoice("2/4"), "les fractions équivalentes doivent être reconnues");
 const ratioQuestion = engine.SKILL_GENERATORS.proportions[1](Math.random);
 assert.equal(ratioQuestion.kind, "ratio-comparison", "le ratio doit comparer deux quantités comme dans le programme de seconde 2026");
