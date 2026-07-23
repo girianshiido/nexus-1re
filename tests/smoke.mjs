@@ -47,6 +47,11 @@ assert.doesNotMatch(explicitSequenceWithOne.prompt, /1 ×/, "aucune multiplicati
 const scientificQuestion = engine.SKILL_GENERATORS.numeric[2](() => 0);
 assert.ok(scientificQuestion.choices.some(choice => /^20 × 10/.test(choice)), "la notation scientifique doit proposer une écriture équivalente mais non normalisée");
 
+const totalProbabilityQuestion = engine.SKILL_GENERATORS.probability[2](() => 0);
+assert.doesNotMatch(totalProbabilityQuestion.prompt, /P\(B \|/, "les probabilités conditionnelles ne doivent pas contenir d'espace interne fragile");
+const dataFilterQuestion = engine.SKILL_GENERATORS.algorithmics[4](() => 0);
+assert.match(dataFilterQuestion.prompt, /colonnes/, "un tableau horizontal de capteurs doit parler de colonnes");
+
 const developFamilies = new Set();
 for (let i = 0; i < 300; i += 1) {
   const question = engine.SKILL_GENERATORS.algebra[1](Math.random);

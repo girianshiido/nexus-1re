@@ -36,6 +36,44 @@
   ];
 
   const $ = selector => document.querySelector(selector);
+
+  const SUBSCRIPT_CHARACTERS = { "₀": "0", "₁": "1", "₂": "2", "₃": "3", "₄": "4", "₅": "5", "₆": "6", "₇": "7", "₈": "8", "₉": "9", "₊": "+", "₋": "−", "ₙ": "n" };
+  const SUPERSCRIPT_CHARACTERS = { "⁰": "0", "¹": "1", "²": "2", "³": "3", "⁴": "4", "⁵": "5", "⁶": "6", "⁷": "7", "⁸": "8", "⁹": "9", "⁺": "+", "⁻": "−" };
+  const MATH_INLINE_PATTERN = /P\([^()]*\)(?:\s*=\s*[−-]?\d+(?:[,.]\d+)?)?|u[₀₁₂₃₄₅₆₇₈₉₊₋ₙ]+(?:\s*=\s*(?:u[₀₁₂₃₄₅₆₇₈₉₊₋ₙ]+|[−-]?\d+)(?:\s*[+−-]\s*\d+)?)?|(?:[−-]?\d*)?\(x\s*[+−-]\s*\d+\)(?:\(x\s*[+−-]\s*\d+\))+(?:\s*=\s*0)?|(?:f′?\(x\)|[xy])\s*[=<>≤≥]\s*[−-]?\d+(?:\s+(?:ou|et)\s*[xy]\s*[=<>≤≥]\s*[−-]?\d+)?|\d+\s*×\s*10[⁻⁰¹²³⁴⁵⁶⁷⁸⁹]+/g;
+
+  function appendMathCharacters(target, text) {
+    const fragments = String(text).split(/([₀₁₂₃₄₅₆₇₈₉₊₋ₙ]+|[⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻]+)/g);
+    fragments.forEach(fragment => {
+      if (!fragment) return;
+      const subscript = [...fragment].every(character => SUBSCRIPT_CHARACTERS[character] !== undefined);
+      const superscript = [...fragment].every(character => SUPERSCRIPT_CHARACTERS[character] !== undefined);
+      if (!subscript && !superscript) {
+        target.append(document.createTextNode(fragment));
+        return;
+      }
+      const modifier = document.createElement("span");
+      modifier.className = subscript ? "math-sub" : "math-sup";
+      modifier.textContent = [...fragment].map(character => (subscript ? SUBSCRIPT_CHARACTERS : SUPERSCRIPT_CHARACTERS)[character]).join("");
+      target.append(modifier);
+    });
+  }
+
+  function renderMathText(target, text) {
+    const fragment = document.createDocumentFragment();
+    const source = String(text);
+    let cursor = 0;
+    for (const match of source.matchAll(MATH_INLINE_PATTERN)) {
+      appendMathCharacters(fragment, source.slice(cursor, match.index));
+      const formula = document.createElement("span");
+      formula.className = "math-inline";
+      appendMathCharacters(formula, match[0]);
+      fragment.append(formula);
+      cursor = match.index + match[0].length;
+    }
+    appendMathCharacters(fragment, source.slice(cursor));
+    target.replaceChildren(fragment);
+  }
+
   const dom = {
     flux: $("#flux-value"),
     production: $("#production-value"),
@@ -829,7 +867,7 @@
       : `${eventRun.correct}/${eventRun.event.questionCount}`;
     dom.skillChip.textContent = Engine.SKILLS[currentQuestion.skill];
     dom.timerLabel.textContent = eventRun.mode === "exam" ? "Sans calculatrice" : eventRun.mode === "event" ? "Réfléchis" : "Sans pénalité de temps";
-    dom.questionText.textContent = currentQuestion.prompt;
+    renderMathText(dom.questionText, currentQuestion.prompt);
     const reference = questionReference(currentQuestion);
     const alreadyReported = state.questionReports.some(report => report.reference === reference);
     dom.questionReference.textContent = `Réf. ${reference}`;
@@ -846,7 +884,7 @@
       const button = document.createElement("button");
       button.className = "answer-button";
       button.type = "button";
-      button.textContent = choice;
+      renderMathText(button, choice);
       button.addEventListener("click", () => answerQuestion(index));
       dom.answers.append(button);
     });
@@ -906,7 +944,15 @@
     } else {
       const speedText = eventRun.mode === "event" && correct && elapsed <= FAST_TIME ? " Réponse rapide : récompense améliorée." : "";
       const returnText = !correct ? " Cette sous-notion reviendra dans quelques questions avec de nouveaux nombres." : "";
-      dom.feedback.innerHTML = `<strong>${correct ? "Bonne réponse." : "Pas cette fois."}</strong> ${currentQuestion.explanation}${speedText}<small class="learning-rule">Point travaillé : ${subskill?.label || Engine.SKILLS[currentQuestion.skill]}.${returnText}</small>`;
+      const feedbackTitle = document.createElement("strong");
+      feedbackTitle.textContent = correct ? "Bonne réponse." : "Pas cette fois.";
+      const learningRule = document.createElement("small");
+      learningRule.className = "learning-rule";
+      learningRule.textContent = `Point travaillé : ${subskill?.label || Engine.SKILLS[currentQuestion.skill]}.${returnText}`;
+      dom.feedback.replaceChildren(feedbackTitle, document.createTextNode(" "));
+      const explanation = document.createElement("span");
+      renderMathText(explanation, `${currentQuestion.explanation}${speedText}`);
+      dom.feedback.append(explanation, learningRule);
     }
     const reference = questionReference(currentQuestion);
     const alreadyReported = state.questionReports.some(report => report.reference === reference);

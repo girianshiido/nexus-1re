@@ -1179,9 +1179,9 @@
     return {
       kind: "total-probability",
       skill: "probability",
-      prompt: `P(A) = ${formatNumber(pA)}, P(B | A) = ${formatNumber(pGivenA)} et P(B | Ā) = ${formatNumber(pGivenNotA)}. Calculer P(B).`,
+      prompt: `P(A) = ${formatNumber(pA)}, P(B|A) = ${formatNumber(pGivenA)} et P(B|Ā) = ${formatNumber(pGivenNotA)}. Calculer P(B).`,
       choices, answer,
-      explanation: `P(B) = P(A)P(B | A) + P(Ā)P(B | Ā) = ${formatNumber(pA)} × ${formatNumber(pGivenA)} + ${formatNumber(1 - pA)} × ${formatNumber(pGivenNotA)} = ${formatNumber(good, 2)}.`
+      explanation: `P(B) = P(A)P(B|A) + P(Ā)P(B|Ā) = ${formatNumber(pA)} × ${formatNumber(pGivenA)} + ${formatNumber(1 - pA)} × ${formatNumber(pGivenNotA)} = ${formatNumber(good, 2)}.`
     };
   }
 
@@ -1313,10 +1313,10 @@
     return {
       kind: "data-filter",
       skill: "algorithmics",
-      prompt: `On filtre les mesures supérieures ou égales à ${threshold}. Combien de lignes seront conservées ?`,
+      prompt: `On filtre les mesures supérieures ou égales à ${threshold}. Combien de colonnes seront conservées ?`,
       choices, answer,
       visual: `<table aria-label="Données brutes"><tr><th>Capteur</th>${values.map((_, index) => `<td>C${index + 1}</td>`).join("")}</tr><tr><th>Mesure</th>${values.map(value => `<td>${value}</td>`).join("")}</tr></table>`,
-      explanation: `${values.filter(value => value >= threshold).join(", ")} sont supérieures ou égales à ${threshold}, soit ${good} lignes.`
+      explanation: `${values.filter(value => value >= threshold).join(", ")} sont supérieures ou égales à ${threshold}, soit ${good} colonnes.`
     };
   }
 

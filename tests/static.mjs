@@ -37,6 +37,9 @@ assert.match(app, /buyWorkshopUpgrade/, "les améliorations d'atelier doivent ê
 assert.match(app, /buyCalibrationUpgrade/, "les points d'étalonnage doivent financer des améliorations permanentes");
 assert.match(app, /createProgrammeCoverage/, "la grille du programme 2026 doit être affichée dans le jeu");
 assert.match(app, /renderQuestionCanvases/, "les lectures graphiques doivent être dessinées dans le navigateur");
+assert.match(app, /renderMathText/, "les formules doivent être rendues dans des groupes insécables");
+assert.match(app, /SUBSCRIPT_CHARACTERS/, "les indices doivent être redessinés avec la police du jeu");
+assert.match(styles, /\.math-inline[^]*white-space:\s*nowrap/, "une formule ne doit pas être coupée à l'intérieur sur mobile");
 assert.equal((html.match(/role="tab"/g) || []).length, 4, "quatre onglets doivent séparer le noyau, les ateliers, les améliorations et le réseau");
 assert.match(app, /EVENT_WINDOW_MS/, "les perturbations doivent avoir une durée de disponibilité limitée");
 assert.match(app, /workshopReveal/, "les ateliers doivent être révélés progressivement");
