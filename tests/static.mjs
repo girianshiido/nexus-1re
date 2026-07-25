@@ -37,6 +37,8 @@ assert.match(app, /buyWorkshopUpgrade/, "les améliorations d'atelier doivent ê
 assert.match(app, /buyCalibrationUpgrade/, "les points d'étalonnage doivent financer des améliorations permanentes");
 assert.match(app, /createProgrammeCoverage/, "la grille du programme 2026 doit être affichée dans le jeu");
 assert.match(app, /renderQuestionCanvases/, "les lectures graphiques doivent être dessinées dans le navigateur");
+assert.match(app, /clickValue\(\) \* \(hyper \? stats\.multiplier : 1\) \* boostMultiplier\(\)/, "les bonus de production et d'Hypercadence doivent se cumuler sur un clic");
+assert.match(app, /clickValue\(\) \* hyperStats\(\)\.pulsesPerSecond \* boost/, "le bonus de production doit aussi s'appliquer aux impulsions Hypercadence");
 assert.match(app, /renderMathText/, "les formules doivent être rendues dans des groupes insécables");
 assert.match(app, /SUBSCRIPT_CHARACTERS/, "les indices doivent être redessinés avec la police du jeu");
 assert.match(styles, /\.math-inline[^]*white-space:\s*nowrap/, "une formule ne doit pas être coupée à l'intérieur sur mobile");

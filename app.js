@@ -307,9 +307,11 @@
   function permanentMultiplier() { return Model.permanentMultiplier(state.calibration); }
   function baseProduction() { return Model.baseProduction(state.workshops, state.mastery, state.workshopUpgrades); }
   function clickValue() { return Model.clickGain(state.totalClicks, state.workshops, state.calibration, state.calibrationUpgrades); }
+  function boostMultiplier() { return isBoosted() ? state.boostMultiplier : 1; }
   function productionRate() {
-    const passive = baseProduction() * permanentMultiplier() * (isBoosted() ? state.boostMultiplier : 1);
-    const hyperPulses = isHyper() ? clickValue() * hyperStats().pulsesPerSecond : 0;
+    const boost = boostMultiplier();
+    const passive = baseProduction() * permanentMultiplier() * boost;
+    const hyperPulses = isHyper() ? clickValue() * hyperStats().pulsesPerSecond * boost : 0;
     return passive + hyperPulses;
   }
 
@@ -615,7 +617,7 @@
   function clickCore() {
     const hyper = isHyper();
     const stats = hyperStats();
-    const gain = clickValue() * (hyper ? stats.multiplier : 1);
+    const gain = clickValue() * (hyper ? stats.multiplier : 1) * boostMultiplier();
     state.totalClicks += 1;
     state.lastManualClickAt = now();
     addFlux(gain);
