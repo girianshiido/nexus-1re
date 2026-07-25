@@ -168,15 +168,15 @@
 
   function polynomialExpression(a, b, c) {
     const terms = [`${a === 1 ? "" : a === -1 ? "−" : a}x²`];
-    if (b !== 0) terms.push(`${b > 0 ? "+" : "−"} ${Math.abs(b)}x`);
+    if (b !== 0) terms.push(`${b > 0 ? "+" : "−"} ${Math.abs(b) === 1 ? "" : Math.abs(b)}x`);
     if (c !== 0) terms.push(`${c > 0 ? "+" : "−"} ${Math.abs(c)}`);
     return terms.join(" ");
   }
 
   function cubicExpression(a, b, c, d) {
     const terms = [`${a === 1 ? "" : a === -1 ? "−" : a}x³`];
-    if (b !== 0) terms.push(`${b > 0 ? "+" : "−"} ${Math.abs(b)}x²`);
-    if (c !== 0) terms.push(`${c > 0 ? "+" : "−"} ${Math.abs(c)}x`);
+    if (b !== 0) terms.push(`${b > 0 ? "+" : "−"} ${Math.abs(b) === 1 ? "" : Math.abs(b)}x²`);
+    if (c !== 0) terms.push(`${c > 0 ? "+" : "−"} ${Math.abs(c) === 1 ? "" : Math.abs(c)}x`);
     if (d !== 0) terms.push(`${d > 0 ? "+" : "−"} ${Math.abs(d)}`);
     return terms.join(" ");
   }
@@ -187,36 +187,98 @@
   }
 
   function fractionCalculation(rng) {
-    const denominator = pick([4, 5, 6, 8, 10, 12], rng);
-    const first = randInt(1, denominator - 1, rng);
-    const second = randInt(1, denominator - 1, rng);
-    const good = fraction(first + second, denominator);
-    const { choices, answer } = makeChoices(good, [
-      fraction(first + second, denominator * 2),
-      fraction(first * second, denominator),
-      fraction(Math.abs(first - second), denominator)
-    ], rng);
+    const family = randInt(0, 2, rng);
+    let prompt;
+    let good;
+    let explanation;
+    let distractors;
+    if (family === 0) {
+      const denominator = pick([4, 5, 6, 8, 10, 12], rng);
+      const first = randInt(2, denominator - 1, rng);
+      const second = randInt(1, denominator - 1, rng);
+      const subtract = rng() < 0.5;
+      const numerator = subtract ? first - second : first + second;
+      good = fraction(numerator, denominator);
+      prompt = `Calculer et simplifier : ${first}/${denominator} ${subtract ? "−" : "+"} ${second}/${denominator}.`;
+      explanation = `Les dénominateurs sont identiques : (${first} ${subtract ? "−" : "+"} ${second})/${denominator} = ${good}.`;
+      distractors = [
+        fraction(subtract ? first + second : Math.abs(first - second), denominator),
+        fraction(numerator, denominator * 2),
+        fraction(first * second, denominator)
+      ];
+    } else if (family === 1) {
+      const firstDenominator = pick([2, 3, 4, 5, 6], rng);
+      const multiplier = pick([2, 3], rng);
+      const secondDenominator = firstDenominator * multiplier;
+      const first = randInt(1, firstDenominator - 1, rng);
+      const second = randInt(1, secondDenominator - 1, rng);
+      good = fraction(first * multiplier + second, secondDenominator);
+      prompt = `Calculer et simplifier : ${first}/${firstDenominator} + ${second}/${secondDenominator}.`;
+      explanation = `${first}/${firstDenominator} = ${first * multiplier}/${secondDenominator}. Donc (${first * multiplier} + ${second})/${secondDenominator} = ${good}.`;
+      distractors = [
+        fraction(first + second, firstDenominator + secondDenominator),
+        fraction(first + second, secondDenominator),
+        fraction(first * multiplier - second, secondDenominator)
+      ];
+    } else {
+      const firstNumerator = randInt(1, 5, rng);
+      const firstDenominator = randInt(firstNumerator + 1, 8, rng);
+      const secondNumerator = randInt(1, 5, rng);
+      const secondDenominator = randInt(secondNumerator + 1, 8, rng);
+      good = fraction(firstNumerator * secondNumerator, firstDenominator * secondDenominator);
+      prompt = `Calculer et simplifier : ${firstNumerator}/${firstDenominator} × ${secondNumerator}/${secondDenominator}.`;
+      explanation = `On multiplie les numérateurs et les dénominateurs : (${firstNumerator} × ${secondNumerator})/(${firstDenominator} × ${secondDenominator}) = ${good}.`;
+      distractors = [
+        fraction(firstNumerator + secondNumerator, firstDenominator + secondDenominator),
+        fraction(firstNumerator * secondDenominator, firstDenominator * secondNumerator),
+        fraction(firstNumerator * secondNumerator, firstDenominator + secondDenominator)
+      ];
+    }
+    const { choices, answer } = makeChoices(good, distractors, rng);
     return {
       kind: "fraction-calculation",
       skill: "numeric",
-      prompt: `Calculer et simplifier : ${first}/${denominator} + ${second}/${denominator}.`,
+      prompt,
       choices, answer,
-      explanation: `Les dénominateurs sont identiques : (${first} + ${second})/${denominator} = ${good}.`
+      explanation
     };
   }
 
   function operationPriority(rng) {
+    const family = randInt(0, 2, rng);
     const a = randInt(2, 12, rng);
     const b = randInt(2, 9, rng);
     const c = randInt(2, 8, rng);
-    const good = a + b * c;
-    const { choices, answer } = makeChoices(good, [(a + b) * c, a * b + c, a + b + c], rng);
+    let prompt;
+    let good;
+    let explanation;
+    let distractors;
+    if (family === 0) {
+      const subtract = rng() < 0.5;
+      good = subtract ? a - b * c : a + b * c;
+      prompt = `Calculer mentalement : ${a} ${subtract ? "−" : "+"} ${b} × ${c}.`;
+      explanation = `La multiplication est prioritaire : ${b} × ${c} = ${b * c}, puis ${a} ${subtract ? "−" : "+"} ${b * c} = ${good}.`;
+      distractors = [(subtract ? a - b : a + b) * c, a * b + (subtract ? -c : c), a + (subtract ? -b : b) + c];
+    } else if (family === 1) {
+      const d = randInt(2, 10, rng);
+      good = (a + b) * c - d;
+      prompt = `Calculer mentalement : (${a} + ${b}) × ${c} − ${d}.`;
+      explanation = `On calcule d'abord la parenthèse : ${a} + ${b} = ${a + b}, puis ${a + b} × ${c} − ${d} = ${good}.`;
+      distractors = [a + b * c - d, (a + b) * (c - d), (a + b) * c + d];
+    } else {
+      const d = randInt(2, 7, rng);
+      good = a * b - c * d;
+      prompt = `Calculer mentalement : ${a} × ${b} − ${c} × ${d}.`;
+      explanation = `On effectue les deux multiplications avant la soustraction : ${a * b} − ${c * d} = ${good}.`;
+      distractors = [(a * b - c) * d, a * (b - c) * d, a * b - c + d];
+    }
+    const { choices, answer } = makeChoices(good, distractors, rng);
     return {
       kind: "operation-priority",
       skill: "numeric",
-      prompt: `Calculer mentalement : ${a} + ${b} × ${c}.`,
+      prompt,
       choices, answer,
-      explanation: `La multiplication est prioritaire : ${b} × ${c} = ${b * c}, puis ${a} + ${b * c} = ${good}.`
+      explanation
     };
   }
 
@@ -241,21 +303,33 @@
   }
 
   function powerRule(rng) {
-    const first = randInt(-4, 6, rng);
-    const second = randInt(-4, 6, rng);
-    const exponent = first + second;
+    const family = randInt(0, 2, rng);
+    const exponents = [-4, -3, -2, -1, 1, 2, 3, 4, 5, 6];
+    const first = pick(exponents, rng);
+    const second = pick(exponents, rng);
+    const exponent = family === 0 ? first + second : family === 1 ? first - second : first * second;
     const good = `10${superscript(exponent)}`;
     const { choices, answer } = makeChoices(good, [
-      `10${superscript(first * second)}`,
-      `10${superscript(first - second)}`,
+      `10${superscript(family === 0 ? first * second : first + second)}`,
+      `10${superscript(family === 2 ? first + second : first * second)}`,
       `20${superscript(exponent)}`
     ], rng);
+    const operation = family === 0
+      ? `10${superscript(first)} × 10${superscript(second)}`
+      : family === 1
+        ? `10${superscript(first)} ÷ 10${superscript(second)}`
+        : `(10${superscript(first)})${superscript(second)}`;
+    const calculation = family === 0
+      ? `${first} + (${second})`
+      : family === 1
+        ? `${first} − (${second})`
+        : `${first} × ${second}`;
     return {
       kind: "power-rule",
       skill: "numeric",
-      prompt: `Simplifier : 10${superscript(first)} × 10${superscript(second)}.`,
+      prompt: `Simplifier : ${operation}.`,
       choices, answer,
-      explanation: `Pour des puissances de même base, on additionne les exposants : ${first} + (${second}) = ${exponent}.`
+      explanation: `${family === 0 ? "Dans un produit, on additionne" : family === 1 ? "Dans un quotient, on soustrait" : "Pour une puissance de puissance, on multiplie"} les exposants : ${calculation} = ${exponent}.`
     };
   }
 
@@ -320,20 +394,35 @@
   }
 
   function reciprocalStatement(rng) {
-    const variant = pick([
-      {
-        statement: "Si un entier est divisible par 4, alors il est pair.",
-        reciprocal: "Si un entier est pair, alors il est divisible par 4.",
-        contrapositive: "Si un entier est impair, alors il n'est pas divisible par 4.",
-        other: "Si un entier est divisible par 2, alors il est impair."
-      },
-      {
-        statement: "Si x > 5, alors x > 2.",
-        reciprocal: "Si x > 2, alors x > 5.",
-        contrapositive: "Si x ≤ 2, alors x ≤ 5.",
-        other: "Si x < 5, alors x < 2."
-      }
-    ], rng);
+    const family = randInt(0, 2, rng);
+    let variant;
+    if (family === 0) {
+      const divisor = randInt(2, 6, rng);
+      const multiple = divisor * randInt(2, 4, rng);
+      variant = {
+        statement: `Si un entier est divisible par ${multiple}, alors il est divisible par ${divisor}.`,
+        reciprocal: `Si un entier est divisible par ${divisor}, alors il est divisible par ${multiple}.`,
+        contrapositive: `Si un entier n'est pas divisible par ${divisor}, alors il n'est pas divisible par ${multiple}.`,
+        other: `Si un entier est divisible par ${divisor}, alors il n'est pas divisible par ${multiple}.`
+      };
+    } else if (family === 1) {
+      const high = randInt(4, 10, rng);
+      const low = high - randInt(2, 4, rng);
+      variant = {
+        statement: `Si x > ${high}, alors x > ${low}.`,
+        reciprocal: `Si x > ${low}, alors x > ${high}.`,
+        contrapositive: `Si x ≤ ${low}, alors x ≤ ${high}.`,
+        other: `Si x < ${high}, alors x < ${low}.`
+      };
+    } else {
+      const divisor = 2 * randInt(2, 6, rng);
+      variant = {
+        statement: `Si un entier est divisible par ${divisor}, alors il est pair.`,
+        reciprocal: `Si un entier est pair, alors il est divisible par ${divisor}.`,
+        contrapositive: `Si un entier est impair, alors il n'est pas divisible par ${divisor}.`,
+        other: `Si un entier est divisible par ${divisor}, alors il est impair.`
+      };
+    }
     const askReciprocal = rng() < 0.5;
     const target = askReciprocal ? variant.reciprocal : variant.contrapositive;
     const { choices, answer } = makeChoices(target, [variant.reciprocal, variant.contrapositive, variant.other, `${variant.statement} et sa réciproque sont équivalentes.`], rng);
@@ -349,11 +438,41 @@
   }
 
   function counterexample(rng) {
-    const variant = pick([
-      { statement: "Pour tout entier n, n² > n.", good: "n = 1", wrong: ["n = 2", "n = 3", "n = 4"], explanation: "Pour n = 1, on a 1² = 1, donc l'inégalité stricte est fausse." },
-      { statement: "Tout multiple de 3 est impair.", good: "n = 6", wrong: ["n = 3", "n = 9", "n = 15"], explanation: "6 est multiple de 3 mais il est pair." },
-      { statement: "Si x² = 9, alors x = 3.", good: "x = −3", wrong: ["x = 0", "x = 2", "x = 4"], explanation: "(−3)² = 9 mais −3 n'est pas égal à 3." }
-    ], rng);
+    const family = randInt(0, 3, rng);
+    let variant;
+    if (family === 0) {
+      const coefficient = randInt(2, 8, rng);
+      variant = {
+        statement: `Pour tout entier n ≥ 1, n² > ${coefficient === 1 ? "n" : `${coefficient}n`}.`,
+        good: `n = ${coefficient}`,
+        wrong: [coefficient + 1, coefficient + 2, coefficient + 3].map(value => `n = ${value}`),
+        explanation: `Pour n = ${coefficient}, on a n² = ${coefficient ** 2} et ${coefficient === 1 ? "n" : `${coefficient}n`} = ${coefficient ** 2} : l'inégalité stricte est fausse.`
+      };
+    } else if (family === 1) {
+      const oddFactor = pick([3, 5, 7, 9], rng);
+      variant = {
+        statement: `Tout multiple de ${oddFactor} est impair.`,
+        good: `n = ${2 * oddFactor}`,
+        wrong: [oddFactor, 3 * oddFactor, 5 * oddFactor].map(value => `n = ${value}`),
+        explanation: `${2 * oddFactor} est multiple de ${oddFactor}, mais il est pair.`
+      };
+    } else if (family === 2) {
+      const root = randInt(2, 10, rng);
+      variant = {
+        statement: `Si x² = ${root ** 2}, alors x = ${root}.`,
+        good: `x = −${root}`,
+        wrong: [`x = 0`, `x = ${root - 1}`, `x = ${root + 1}`],
+        explanation: `(−${root})² = ${root ** 2}, mais −${root} n'est pas égal à ${root}.`
+      };
+    } else {
+      const divisor = randInt(2, 8, rng);
+      variant = {
+        statement: `Tout entier divisible par ${divisor} est divisible par ${2 * divisor}.`,
+        good: `n = ${divisor}`,
+        wrong: [2 * divisor, 4 * divisor, 6 * divisor].map(value => `n = ${value}`),
+        explanation: `${divisor} est divisible par ${divisor}, mais pas par ${2 * divisor}.`
+      };
+    }
     const { choices, answer } = makeChoices(variant.good, variant.wrong, rng);
     return {
       kind: "counterexample",
@@ -631,25 +750,61 @@
       skill: "algebra",
       prompt: `Développer et réduire : (x + ${firstConstant})(x − ${secondConstant}).`,
       choices, answer,
-      explanation: `(x + ${firstConstant})(x − ${secondConstant}) = x² − ${secondConstant}x + ${firstConstant}x − ${firstConstant * secondConstant} = ${good}.`
+      explanation: `(x + ${firstConstant})(x − ${secondConstant}) = x² − ${secondConstant === 1 ? "" : secondConstant}x + ${firstConstant}x − ${firstConstant * secondConstant} = ${good}.`
     };
   }
 
   function factorExpression(rng) {
+    const family = randInt(0, 2, rng);
     const factorValue = pick([2, 3, 4, 5, 6], rng);
-    const constant = randInt(2, 8, rng);
-    const good = `${factorValue}(x + ${constant})`;
-    const { choices, answer } = makeChoices(good, [
-      `${factorValue}(x + ${factorValue * constant})`,
-      `x(${factorValue} + ${factorValue * constant})`,
-      `${factorValue}x(x + ${constant})`
-    ], rng);
+    const constant = pick([-8, -6, -4, 2, 3, 5, 7], rng);
+    const coefficient = randInt(2, 5, rng);
+    let prompt;
+    let good;
+    let explanation;
+    let distractors;
+    if (family === 0) {
+      const inside = affineExpression(coefficient, constant);
+      const expanded = affineExpression(factorValue * coefficient, factorValue * constant);
+      good = `${factorValue}(${inside})`;
+      prompt = `Factoriser : ${expanded}.`;
+      explanation = `${factorValue} est un facteur commun : ${expanded} = ${good}.`;
+      distractors = [
+        `${factorValue}(${affineExpression(coefficient, factorValue * constant)})`,
+        `${coefficient}(${affineExpression(factorValue, factorValue * constant)})`,
+        `${factorValue}x(${inside})`
+      ];
+    } else if (family === 1) {
+      const inside = affineExpression(coefficient, constant);
+      const expression = polynomialExpression(coefficient, constant, 0);
+      good = `x(${inside})`;
+      prompt = `Factoriser : ${expression}.`;
+      explanation = `x est commun aux deux termes : ${expression} = ${good}.`;
+      distractors = [
+        `${coefficient}x(${linearFactor(constant)})`,
+        `x(${affineExpression(coefficient, coefficient * constant)})`,
+        `${coefficient}(${inside})`
+      ];
+    } else {
+      const positiveConstant = Math.abs(constant);
+      const expanded = affineExpression(-factorValue * coefficient, -factorValue * positiveConstant);
+      const inside = affineExpression(coefficient, positiveConstant);
+      good = `−${factorValue}(${inside})`;
+      prompt = `Factoriser par −${factorValue} : ${expanded}.`;
+      explanation = `En mettant −${factorValue} en facteur, les signes changent dans la parenthèse : ${expanded} = ${good}.`;
+      distractors = [
+        `${factorValue}(${inside})`,
+        `−${factorValue}(${affineExpression(coefficient, -positiveConstant)})`,
+        `−${coefficient}(${affineExpression(factorValue, positiveConstant)})`
+      ];
+    }
+    const { choices, answer } = makeChoices(good, distractors, rng);
     return {
       kind: "factor-expression",
       skill: "algebra",
-      prompt: `Factoriser : ${factorValue}x + ${factorValue * constant}.`,
+      prompt,
       choices, answer,
-      explanation: `${factorValue} est un facteur commun : ${factorValue}x + ${factorValue * constant} = ${good}.`
+      explanation
     };
   }
 
@@ -924,17 +1079,45 @@
   }
 
   function recurrentSequenceTerm(rng) {
+    const family = randInt(0, 2, rng);
     const start = randInt(1, 8, rng);
-    const step = pick([-3, -2, 2, 3, 4], rng);
-    const rank = randInt(3, 6, rng);
-    const good = start + rank * step;
-    const { choices, answer } = makeChoices(good, [start + (rank - 1) * step, start + (rank + 1) * step, start * step * rank], rng);
+    let rank;
+    let good;
+    let prompt;
+    let explanation;
+    let distractors;
+    if (family === 0) {
+      const step = pick([-3, -2, 2, 3, 4], rng);
+      rank = randInt(3, 6, rng);
+      good = start + rank * step;
+      prompt = `On a u₀ = ${start} et uₙ₊₁ = uₙ ${step >= 0 ? "+" : "−"} ${Math.abs(step)}. Calculer u${subscript(rank)}.`;
+      explanation = `Entre u₀ et u${subscript(rank)}, on ajoute ${step} exactement ${rank} fois : ${start} ${step >= 0 ? "+" : "−"} ${rank * Math.abs(step)} = ${good}.`;
+      distractors = [start + (rank - 1) * step, start + (rank + 1) * step, start * step * rank];
+    } else if (family === 1) {
+      const ratio = pick([2, 3], rng);
+      rank = randInt(3, 5, rng);
+      good = start * ratio ** rank;
+      prompt = `On a u₀ = ${start} et uₙ₊₁ = ${ratio}uₙ. Calculer u${subscript(rank)}.`;
+      explanation = `On multiplie ${rank} fois par ${ratio} : u${subscript(rank)} = ${coefficientTimes(start, `${ratio}${superscript(rank)}`)} = ${good}.`;
+      distractors = [start * ratio * rank, start * ratio ** (rank - 1), start + rank * ratio];
+    } else {
+      const multiplier = pick([2, 3], rng);
+      const offset = pick([-3, -2, 1, 2, 4], rng);
+      rank = randInt(2, 3, rng);
+      const terms = [start];
+      for (let index = 0; index < rank; index += 1) terms.push(multiplier * terms.at(-1) + offset);
+      good = terms.at(-1);
+      prompt = `On a u₀ = ${start} et uₙ₊₁ = ${multiplier}uₙ ${offset >= 0 ? "+" : "−"} ${Math.abs(offset)}. Calculer u${subscript(rank)}.`;
+      explanation = `On applique la relation terme après terme : ${terms.map((value, index) => `u${subscript(index)} = ${value}`).join(", ")}.`;
+      distractors = [terms.at(-2), multiplier * start + rank * offset, good - offset];
+    }
+    const { choices, answer } = makeChoices(good, distractors, rng);
     return {
       kind: "recurrent-sequence-term",
       skill: "sequences",
-      prompt: `On a u₀ = ${start} et uₙ₊₁ = uₙ ${step >= 0 ? "+" : "−"} ${Math.abs(step)}. Calculer u${subscript(rank)}.`,
+      prompt,
       choices, answer,
-      explanation: `Entre u₀ et u${subscript(rank)}, on ajoute ${step} exactement ${rank} fois : ${start} ${step >= 0 ? "+" : "−"} ${rank * Math.abs(step)} = ${good}.`
+      explanation
     };
   }
 
@@ -1212,16 +1395,17 @@
   }
 
   function randomExpectation(rng) {
-    const p0 = pick([0.2, 0.3, 0.4], rng);
-    const p1 = pick([0.2, 0.3, 0.4], rng);
+    const p0 = pick([0.1, 0.2, 0.3, 0.4], rng);
+    const p1 = pick([0.2, 0.3, 0.4, 0.5], rng);
     const p2 = Math.round((1 - p0 - p1) * 10) / 10;
     if (p2 <= 0) return randomExpectation(rng);
-    const values = [0, 2, 5];
-    const expectation = values[1] * p1 + values[2] * p2;
+    const first = randInt(-3, 2, rng);
+    const values = [first, first + randInt(1, 4, rng), first + randInt(5, 9, rng)];
+    const expectation = values[0] * p0 + values[1] * p1 + values[2] * p2;
     const { choices, answer } = makeChoices(formatNumber(expectation, 2), [
       formatNumber((values[0] + values[1] + values[2]) / 3, 2),
-      formatNumber(p1 + p2, 2),
-      formatNumber(expectation + 1, 2)
+      formatNumber(values[0] * p0 + values[1] * p1, 2),
+      formatNumber(expectation + values[2] - values[1], 2)
     ], rng);
     return {
       kind: "random-expectation",
@@ -1229,137 +1413,299 @@
       prompt: "Calculer l'espérance de la variable aléatoire X donnée par cette loi.",
       choices, answer,
       visual: `<table aria-label="Loi de probabilité de X"><tr><th>x</th>${values.map(value => `<td>${value}</td>`).join("")}</tr><tr><th>P(X = x)</th><td>${formatNumber(p0)}</td><td>${formatNumber(p1)}</td><td>${formatNumber(p2)}</td></tr></table>`,
-      explanation: `E(X) = 0 × ${formatNumber(p0)} + 2 × ${formatNumber(p1)} + 5 × ${formatNumber(p2)} = ${formatNumber(expectation, 2)}.`
+      explanation: `E(X) = ${values[0]} × ${formatNumber(p0)} + ${values[1]} × ${formatNumber(p1)} + ${values[2]} × ${formatNumber(p2)} = ${formatNumber(expectation, 2)}.`
     };
   }
 
   function randomEvent(rng) {
-    const p0 = pick([0.1, 0.2, 0.3], rng);
-    const p1 = pick([0.2, 0.3, 0.4], rng);
+    const p0 = pick([0.1, 0.2, 0.3, 0.4], rng);
+    const p1 = pick([0.1, 0.2, 0.3, 0.4], rng);
     const p2 = Math.round((1 - p0 - p1) * 10) / 10;
-    const good = p0 + p1;
-    const { choices, answer } = makeChoices(formatNumber(good, 2), [formatNumber(p1, 2), formatNumber(p2, 2), formatNumber(1 - good, 2)], rng);
+    if (p2 <= 0) return randomEvent(rng);
+    const start = randInt(-2, 2, rng);
+    const values = [start, start + randInt(1, 3, rng), start + randInt(4, 7, rng)];
+    const probabilities = [p0, p1, p2];
+    const mode = randInt(0, 2, rng);
+    const selectedIndices = mode === 0 ? [0, 1] : mode === 1 ? [1, 2] : [1];
+    const good = selectedIndices.reduce((sum, index) => sum + probabilities[index], 0);
+    const event = mode === 0 ? `X ≤ ${values[1]}` : mode === 1 ? `X ≥ ${values[1]}` : `X = ${values[1]}`;
+    const { choices, answer } = makeChoices(formatNumber(good, 2), [
+      formatNumber(p0, 2),
+      formatNumber(p1, 2),
+      formatNumber(p2, 2),
+      formatNumber(1 - good, 2)
+    ], rng);
     return {
       kind: "random-event",
       skill: "probability",
-      prompt: "D'après cette loi, calculer P(X ≤ 1).",
+      prompt: `D'après cette loi, calculer P(${event}).`,
       choices, answer,
-      visual: `<table aria-label="Loi de probabilité de X"><tr><th>x</th><td>0</td><td>1</td><td>2</td></tr><tr><th>P(X = x)</th><td>${formatNumber(p0)}</td><td>${formatNumber(p1)}</td><td>${formatNumber(p2)}</td></tr></table>`,
-      explanation: `L'événement X ≤ 1 regroupe X = 0 et X = 1 : ${formatNumber(p0)} + ${formatNumber(p1)} = ${formatNumber(good, 2)}.`
+      visual: `<table aria-label="Loi de probabilité de X"><tr><th>x</th>${values.map(value => `<td>${value}</td>`).join("")}</tr><tr><th>P(X = x)</th>${probabilities.map(value => `<td>${formatNumber(value)}</td>`).join("")}</tr></table>`,
+      explanation: selectedIndices.length === 1
+        ? `L'événement ${event} correspond à une seule valeur : sa probabilité est ${formatNumber(good, 2)}.`
+        : `L'événement ${event} regroupe ${selectedIndices.map(index => `X = ${values[index]}`).join(" et ")} : ${selectedIndices.map(index => formatNumber(probabilities[index])).join(" + ")} = ${formatNumber(good, 2)}.`
     };
   }
 
   function pythonAccumulator(rng) {
-    const limit = randInt(4, 8, rng);
-    const good = limit * (limit + 1) / 2;
-    const { choices, answer } = makeChoices(good, [limit ** 2, good - limit, good + 1], rng);
+    const family = randInt(0, 3, rng);
+    let visual;
+    let good;
+    let explanation;
+    let distractors;
+    if (family === 0) {
+      const initial = randInt(-3, 6, rng);
+      const limit = randInt(4, 9, rng);
+      const sum = limit * (limit + 1) / 2;
+      good = initial + sum;
+      visual = `total = ${initial}\nfor n in range(1, ${limit + 1}):\n    total = total + n\nprint(total)`;
+      explanation = `L'accumulateur part de ${initial}, puis additionne les entiers de 1 à ${limit}. Il affiche ${initial} + ${sum} = ${good}.`;
+      distractors = [sum, good - limit, good + 1];
+    } else if (family === 1) {
+      const initial = randInt(-2, 5, rng);
+      const limit = 2 * randInt(3, 6, rng);
+      const terms = Array.from({ length: limit / 2 }, (_, index) => 2 * (index + 1));
+      good = initial + terms.reduce((sum, value) => sum + value, 0);
+      visual = `total = ${initial}\nfor n in range(2, ${limit + 1}, 2):\n    total = total + n\nprint(total)`;
+      explanation = `La boucle ajoute seulement les nombres pairs ${terms.join(", ")} à la valeur initiale ${initial}. Elle affiche ${good}.`;
+      distractors = [good - initial, good - limit, good + 2];
+    } else if (family === 2) {
+      const initial = randInt(-5, 5, rng);
+      const repetitions = randInt(3, 8, rng);
+      const increment = pick([2, 3, 4, 5], rng);
+      good = initial + repetitions * increment;
+      visual = `compteur = ${initial}\nfor k in range(${repetitions}):\n    compteur = compteur + ${increment}\nprint(compteur)`;
+      explanation = `La boucle est exécutée ${repetitions} fois et ajoute ${increment} à chaque passage : ${initial} + ${repetitions} × ${increment} = ${good}.`;
+      distractors = [repetitions * increment, initial + (repetitions - 1) * increment, initial + repetitions + increment];
+    } else {
+      const initial = pick([1, 2, 3], rng);
+      const limit = randInt(3, 5, rng);
+      const product = Array.from({ length: limit }, (_, index) => index + 1).reduce((value, factor) => value * factor, initial);
+      good = product;
+      visual = `produit = ${initial}\nfor n in range(1, ${limit + 1}):\n    produit = produit * n\nprint(produit)`;
+      explanation = `Le programme part de ${initial} et le multiplie successivement par les entiers de 1 à ${limit}. Il affiche ${good}.`;
+      distractors = [initial + limit * (limit + 1) / 2, good / limit, good + initial];
+    }
+    const { choices, answer } = makeChoices(good, distractors, rng);
     return {
       kind: "python-accumulator",
       skill: "algorithmics",
       prompt: "Quelle valeur ce programme affiche-t-il ?",
       choices, answer,
-      visual: `<pre class="code-panel" aria-label="Programme Python">total = 0\nfor n in range(1, ${limit + 1}):\n    total = total + n\nprint(total)</pre>`,
-      explanation: `L'accumulateur additionne les entiers de 1 à ${limit} : ${Array.from({ length: limit }, (_, index) => index + 1).join(" + ")} = ${good}.`
+      visual: `<pre class="code-panel" aria-label="Programme Python">${visual}</pre>`,
+      explanation
     };
   }
 
   function pythonList(rng) {
-    const limit = randInt(7, 12, rng);
-    const values = Array.from({ length: limit - 1 }, (_, index) => index + 1).filter(value => value % 2 === 0);
+    const family = randInt(0, 2, rng);
+    let values;
+    let visual;
+    let explanation;
+    let distractors;
+    if (family === 0) {
+      const start = randInt(0, 3, rng);
+      const limit = randInt(7, 13, rng);
+      const parity = randInt(0, 1, rng);
+      values = Array.from({ length: limit - start }, (_, index) => index + start).filter(value => value % 2 === parity);
+      visual = `valeurs = [n for n in range(${start}, ${limit}) if n % 2 == ${parity}]`;
+      explanation = `La compréhension conserve les entiers ${parity === 0 ? "pairs" : "impairs"} de ${start} inclus à ${limit} exclu : [${values.join(", ")}].`;
+      distractors = [
+        values.map(value => value + 1),
+        [...values, limit],
+        Array.from({ length: limit - start }, (_, index) => index + start)
+      ];
+    } else if (family === 1) {
+      const start = randInt(0, 3, rng);
+      const limit = start + randInt(4, 7, rng);
+      const offset = randInt(-2, 3, rng);
+      values = Array.from({ length: limit - start }, (_, index) => 2 * (index + start) + offset);
+      const writtenOffset = offset === 0 ? "" : ` ${offset > 0 ? "+" : "-"} ${Math.abs(offset)}`;
+      const explainedOffset = offset === 0 ? "" : ` ${offset > 0 ? "+" : "−"} ${Math.abs(offset)}`;
+      visual = `valeurs = [2 * n${writtenOffset} for n in range(${start}, ${limit})]`;
+      explanation = `On calcule 2n${explainedOffset} pour chaque entier n de ${start} inclus à ${limit} exclu : [${values.join(", ")}].`;
+      distractors = [
+        Array.from({ length: limit - start }, (_, index) => index + start + offset),
+        values.slice(0, -1),
+        values.map(value => value - offset)
+      ];
+    } else {
+      const start = randInt(1, 3, rng);
+      const limit = start + randInt(3, 5, rng);
+      values = Array.from({ length: limit - start }, (_, index) => (index + start) ** 2);
+      visual = `valeurs = []\nfor n in range(${start}, ${limit}):\n    valeurs.append(n ** 2)`;
+      explanation = `La boucle ajoute le carré de chaque entier de ${start} inclus à ${limit} exclu : [${values.join(", ")}].`;
+      distractors = [
+        Array.from({ length: limit - start }, (_, index) => 2 * (index + start)),
+        [...values, limit ** 2],
+        Array.from({ length: limit - start }, (_, index) => index + start)
+      ];
+    }
     const good = `[${values.join(", ")}]`;
-    const { choices, answer } = makeChoices(good, [
-      `[${values.map(value => value - 1).join(", ")}]`,
-      `[${[...values, limit % 2 === 0 ? limit : limit + 1].join(", ")}]`,
-      `[${Array.from({ length: limit }, (_, index) => index + 1).join(", ")}]`
-    ], rng);
+    const { choices, answer } = makeChoices(good, distractors.map(values => `[${values.join(", ")}]`), rng);
     return {
       kind: "python-list",
       skill: "algorithmics",
-      prompt: "Quelle liste est créée par cette instruction Python ?",
+      prompt: "Quelle liste ce programme Python crée-t-il ?",
       choices, answer,
-      visual: `<pre class="code-panel" aria-label="Instruction Python">valeurs = [n for n in range(1, ${limit}) if n % 2 == 0]</pre>`,
-      explanation: `La compréhension conserve les entiers pairs de 1 inclus à ${limit} exclu : ${good}.`
+      visual: `<pre class="code-panel" aria-label="Instruction Python">${visual}</pre>`,
+      explanation
     };
   }
 
   function pythonFunction(rng) {
-    const power = randInt(2, 8, rng);
-    const duration = randInt(2, 6, rng);
-    const offset = randInt(1, 5, rng);
-    const good = power * duration + offset;
-    const { choices, answer } = makeChoices(good, [power + duration + offset, power * (duration + offset), power * duration], rng);
+    const family = randInt(0, 2, rng);
+    const first = randInt(2, 9, rng);
+    const second = randInt(2, 7, rng);
+    const offset = randInt(1, 6, rng);
+    let name;
+    let parameters;
+    let visual;
+    let good;
+    let explanation;
+    let distractors;
+    if (family === 0) {
+      name = "energie";
+      parameters = `${first}, ${second}`;
+      good = first * second + offset;
+      visual = `def energie(puissance, duree):\n    resultat = puissance * duree + ${offset}\n    return resultat`;
+      explanation = `Les entrées sont ${first} et ${second}. La sortie vaut ${first} × ${second} + ${offset} = ${good}.`;
+      distractors = [first + second + offset, first * (second + offset), first * second];
+    } else if (family === 1) {
+      name = "transforme";
+      parameters = String(first);
+      const coefficient = randInt(2, 5, rng);
+      good = coefficient * first - offset;
+      visual = `def transforme(x):\n    return ${coefficient} * x - ${offset}`;
+      explanation = `On remplace x par ${first} : ${coefficient} × ${first} − ${offset} = ${good}.`;
+      distractors = [coefficient * (first - offset), coefficient + first - offset, coefficient * first + offset];
+    } else {
+      name = "ecart";
+      parameters = `${first}, ${second}`;
+      good = (first - second) ** 2;
+      visual = `def ecart(a, b):\n    difference = a - b\n    return difference ** 2`;
+      explanation = `La différence vaut ${first} − ${second} = ${first - second}, puis son carré vaut ${good}.`;
+      distractors = [first ** 2 - second ** 2, Math.abs(first - second), (first + second) ** 2];
+    }
+    const { choices, answer } = makeChoices(good, distractors, rng);
     return {
       kind: "python-function",
       skill: "algorithmics",
-      prompt: `Quelle valeur renvoie energie(${power}, ${duration}) ?`,
+      prompt: `Quelle valeur renvoie ${name}(${parameters}) ?`,
       choices, answer,
-      visual: `<pre class="code-panel" aria-label="Fonction Python">def energie(puissance, duree):\n    resultat = puissance * duree + ${offset}\n    return resultat</pre>`,
-      explanation: `Les entrées sont puissance = ${power} et duree = ${duration}. La sortie vaut ${power} × ${duration} + ${offset} = ${good}.`
+      visual: `<pre class="code-panel" aria-label="Fonction Python">${visual}</pre>`,
+      explanation
     };
   }
 
   function spreadsheetFormula(rng) {
     const row = randInt(2, 6, rng);
-    const good = `=B${row}*C${row}`;
-    const { choices, answer } = makeChoices(good, [`=B${row}+C${row}`, `=B${row - 1}*C${row - 1}`, `B${row}*C${row}`], rng);
+    const family = randInt(0, 2, rng);
+    let good;
+    let prompt;
+    let explanation;
+    let distractors;
+    if (family === 0) {
+      good = `=B${row}*C${row}`;
+      prompt = `Dans un tableur, la colonne B contient une quantité et la colonne C un prix unitaire. Quelle formule calcule le coût total à la ligne ${row} ?`;
+      explanation = `Une formule commence par = et multiplie les deux cellules de la même ligne : ${good}.`;
+      distractors = [`=B${row}+C${row}`, `=B${Math.max(1, row - 1)}*C${Math.max(1, row - 1)}`, `B${row}*C${row}`];
+    } else if (family === 1) {
+      const lastRow = row + randInt(3, 7, rng);
+      good = `=SOMME(B${row}:B${lastRow})`;
+      prompt = `Quelle formule de tableur additionne toutes les valeurs des cellules B${row} à B${lastRow} incluses ?`;
+      explanation = `Les deux points désignent toute la plage de B${row} à B${lastRow} : ${good}.`;
+      distractors = [`=B${row}+B${lastRow}`, `=SOMME(B${row};B${lastRow})`, `=MOYENNE(B${row}:B${lastRow})`];
+    } else {
+      good = `=B${row}*(1+C${row})`;
+      prompt = `La cellule B${row} contient un prix et C${row} un taux d'augmentation écrit sous forme décimale. Quelle formule calcule le nouveau prix ?`;
+      explanation = `Après une hausse de taux C${row}, le coefficient multiplicateur est 1 + C${row} : ${good}.`;
+      distractors = [`=B${row}+C${row}`, `=B${row}*C${row}`, `=B${row}/(1+C${row})`];
+    }
+    const { choices, answer } = makeChoices(good, distractors, rng);
     return {
       kind: "spreadsheet-formula",
       skill: "algorithmics",
-      prompt: `Dans un tableur, la colonne B contient une quantité et la colonne C un prix unitaire. Quelle formule calcule le coût total à la ligne ${row} ?`,
+      prompt,
       choices, answer,
-      explanation: `Une formule commence par = et multiplie les deux cellules de la même ligne : ${good}.`
+      explanation
     };
   }
 
   function dataFilter(rng) {
     const threshold = randInt(50, 80, rng);
-    const values = [threshold - 15, threshold + 5, threshold + 18, threshold - 2, threshold + 11];
-    const good = values.filter(value => value >= threshold).length;
-    const { choices, answer } = makeChoices(good, [good - 1, good + 1, values.length], rng);
+    const count = randInt(5, 7, rng);
+    const values = Array.from({ length: count }, () => threshold + randInt(-20, 20, rng));
+    const mode = randInt(0, 2, rng);
+    const upper = threshold + randInt(6, 15, rng);
+    const kept = mode === 0
+      ? values.filter(value => value >= threshold)
+      : mode === 1
+        ? values.filter(value => value < threshold)
+        : values.filter(value => value >= threshold && value <= upper);
+    const good = kept.length;
+    const { choices, answer } = makeChoices(good, [Math.max(0, good - 1), Math.min(count, good + 1), count], rng);
+    const criterion = mode === 0
+      ? `supérieures ou égales à ${threshold}`
+      : mode === 1
+        ? `strictement inférieures à ${threshold}`
+        : `comprises entre ${threshold} et ${upper}, bornes incluses`;
     return {
       kind: "data-filter",
       skill: "algorithmics",
-      prompt: `On filtre les mesures supérieures ou égales à ${threshold}. Combien de colonnes seront conservées ?`,
+      prompt: `On filtre les mesures ${criterion}. Combien de colonnes seront conservées ?`,
       choices, answer,
       visual: `<table aria-label="Données brutes"><tr><th>Capteur</th>${values.map((_, index) => `<td>C${index + 1}</td>`).join("")}</tr><tr><th>Mesure</th>${values.map(value => `<td>${value}</td>`).join("")}</tr></table>`,
-      explanation: `${values.filter(value => value >= threshold).join(", ")} sont supérieures ou égales à ${threshold}, soit ${good} colonnes.`
+      explanation: kept.length
+        ? `${kept.join(", ")} respectent le filtre, soit ${good} colonne${good > 1 ? "s" : ""}.`
+        : `Aucune valeur ne respecte le filtre : aucune colonne n'est conservée.`
     };
   }
 
   function pythonBernoulli(rng) {
-    const probability = pick([0.2, 0.3, 0.4, 0.6, 0.8], rng);
-    const pythonProbability = String(probability);
-    const good = `random() < ${pythonProbability}`;
+    const probability = pick([0.2, 0.3, 0.4, 0.6, 0.7, 0.8], rng);
+    const direct = String(probability);
+    const complement = String(Math.round((1 - probability) * 10) / 10);
+    const useUpperInterval = rng() < 0.5;
+    const good = useUpperInterval ? `random() > ${complement}` : `random() < ${direct}`;
     const { choices, answer } = makeChoices(good, [
-      `random() > ${pythonProbability}`,
-      `random() == ${pythonProbability}`,
-      `random() < ${String(Math.round((1 - probability) * 10) / 10)}`
+      useUpperInterval ? `random() > ${direct}` : `random() < ${complement}`,
+      `random() == ${direct}`,
+      useUpperInterval ? `random() < ${complement}` : `random() > ${direct}`
     ], rng);
     return {
       kind: "python-bernoulli",
       skill: "algorithmics",
-      prompt: `Quelle condition Python simule un succès de probabilité ${formatNumber(probability)} avec random(), qui renvoie un réel uniforme entre 0 et 1 ?`,
+      prompt: `Quelle condition Python définit un événement de probabilité ${formatNumber(probability)} avec random(), qui renvoie un réel uniforme entre 0 et 1 ?`,
       choices, answer,
-      explanation: `L'intervalle [0 ; ${formatNumber(probability)}[ occupe une proportion ${formatNumber(probability)} de [0 ; 1[ : la condition correcte est ${good}.`
+      explanation: useUpperInterval
+        ? `L'intervalle ]${formatNumber(1 - probability)} ; 1[ a pour longueur ${formatNumber(probability)} : la condition correcte est ${good}.`
+        : `L'intervalle [0 ; ${formatNumber(probability)}[ a pour longueur ${formatNumber(probability)} : la condition correcte est ${good}.`
     };
   }
 
   function rawDataCrossTable(rng) {
-    const rows = shuffle([
-      ["A", "Conforme"], ["A", "Conforme"], ["A", "Non conforme"],
-      ["B", "Conforme"], ["B", "Non conforme"], ["B", "Non conforme"]
-    ], rng);
+    const rowCount = randInt(7, 12, rng);
+    const rows = Array.from({ length: rowCount }, () => [
+      rng() < 0.5 ? "A" : "B",
+      rng() < 0.5 ? "Conforme" : "Non conforme"
+    ]);
     const askLine = rng() < 0.5 ? "A" : "B";
     const askStatus = rng() < 0.5 ? "Conforme" : "Non conforme";
     const good = rows.filter(([line, status]) => line === askLine && status === askStatus).length;
-    const { choices, answer } = makeChoices(good, [good + 1, Math.max(0, good - 1), rows.filter(([line]) => line === askLine).length], rng);
+    const { choices, answer } = makeChoices(good, [
+      good + 1,
+      Math.max(0, good - 1),
+      rows.filter(([line]) => line === askLine).length,
+      rows.filter(([, status]) => status === askStatus).length
+    ], rng);
     return {
       kind: "raw-data-cross-table",
       skill: "algorithmics",
       prompt: `Dans un tableau croisé « ligne × conformité », quel effectif placer dans la case Ligne ${askLine} / ${askStatus} ?`,
       choices, answer,
       visual: `<table aria-label="Données brutes à croiser"><tr><th>Pièce</th><th>Ligne</th><th>Contrôle</th></tr>${rows.map(([line, status], index) => `<tr><td>${index + 1}</td><td>${line}</td><td>${status}</td></tr>`).join("")}</table>`,
-      explanation: `On compte les lignes vérifiant simultanément les deux critères : il y en a ${good}.`
+      explanation: `On compte les enregistrements vérifiant simultanément les deux critères : il y en a ${good}.`
     };
   }
 

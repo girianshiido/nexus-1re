@@ -44,6 +44,7 @@ Le jeu peut être installé sur l'écran d'accueil : via le menu du navigateur s
 
 ```sh
 node tests/smoke.mjs
+node tests/diversity.mjs
 node tests/economy.mjs
 node tests/static.mjs
 ```
