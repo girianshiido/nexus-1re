@@ -1043,7 +1043,7 @@
         }
       : {
           arrows: { leftY: 94, centerY: 56, rightY: 102 },
-          labels: { leftY: 114, centerY: 78, rightY: 120 }
+          labels: { leftY: 114, centerY: 72, rightY: 120 }
         };
     const variationVisual = `<svg class="variation-svg" viewBox="0 0 430 128" role="img" aria-label="Tableau de variations : f ${minimum ? "décroît puis croît, avec un minimum" : "croît puis décroît, avec un maximum"} en ${vertex}">
       <defs><marker id="${arrowId}" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" /></marker></defs>
@@ -1051,7 +1051,7 @@
       <text class="variation-axis" x="24" y="31">x</text>
       <text class="variation-axis" x="24" y="91">f(x)</text>
       <text class="variation-x" x="92" y="31">−∞</text>
-      <text class="variation-x" x="214" y="31">${vertex}</text>
+      <text class="variation-x" x="218" y="31">${vertex}</text>
       <text class="variation-x" x="357" y="31">+∞</text>
       <line class="variation-arrow" x1="100" y1="${layout.arrows.leftY}" x2="207" y2="${layout.arrows.centerY}" marker-end="url(#${arrowId})" />
       <line class="variation-arrow" x1="235" y1="${layout.arrows.centerY}" x2="350" y2="${layout.arrows.rightY}" marker-end="url(#${arrowId})" />

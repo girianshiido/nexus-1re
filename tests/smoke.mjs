@@ -41,6 +41,7 @@ const variationQuestion = engine.SKILL_GENERATORS.functions[7](Math.random);
 assert.match(variationQuestion.visual, /<svg class="variation-svg"/, "un tableau de variations doit utiliser un dessin vectoriel");
 assert.match(variationQuestion.visual, /marker-end="url\(#variation-arrow-/, "les variations doivent être représentées par de vraies flèches");
 assert.match(variationQuestion.visual, /x="221"/, "la valeur centrale doit être éloignée de la pointe de flèche");
+assert.match(variationQuestion.visual, /variation-x" x="218" y="31"/, "l'abscisse de l'extrémum doit rester légèrement décalée à droite");
 const variationValueRows = [...variationQuestion.visual.matchAll(/variation-value" x="\d+" y="(\d+)"/g)].map(match => Number(match[1]));
 assert.ok(variationValueRows.every(row => row > 42), "les valeurs de f(x) doivent rester sous la ligne des abscisses");
 const variationOrientations = new Set();
@@ -73,6 +74,8 @@ assert.deepEqual([...variationSolutionCounts].sort(), [0, 1, 2], "la lecture d'�
 const minimumTable = engine.SKILL_GENERATORS.functions[7](() => 0);
 assert.match(minimumTable.visual, /variation-value" x="76" y="68"/, "la valeur extérieure gauche d'un minimum doit rester près de sa flèche");
 assert.match(minimumTable.visual, /variation-value" x="362" y="68"/, "la valeur extérieure droite d'un minimum doit rester près de sa flèche");
+const maximumTable = engine.SKILL_GENERATORS.functions[7](() => 0.9);
+assert.match(maximumTable.visual, /variation-value" x="221" y="72"/, "la valeur du maximum doit rester proche de la flèche sans toucher la ligne des abscisses");
 assert.equal(engine.canonicalChoice("1/2"), engine.canonicalChoice("2/4"), "les fractions équivalentes doivent être reconnues");
 const ratioQuestion = engine.SKILL_GENERATORS.proportions[1](Math.random);
 assert.equal(ratioQuestion.kind, "ratio-comparison", "le ratio doit comparer deux quantités comme dans le programme de seconde 2026");
