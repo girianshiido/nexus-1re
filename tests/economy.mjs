@@ -54,8 +54,17 @@ const synergyAtTen = model.workshopSynergyMultiplier("numeric", workshops, {});
 workshops.proportions = 25;
 const synergyAtTwentyFive = model.workshopSynergyMultiplier("numeric", workshops, {});
 assert.ok(synergyAtTen > 1, "un ancien atelier au palier doit renforcer les ateliers suivants");
-assert.ok(synergyAtTwentyFive > synergyAtTen, "chaque nouveau palier doit renforcer la passerelle");
-assert.equal(model.workshopSynergyMultiplier("proportions", workshops, {}), 1, "le premier atelier ne reçoit pas de passerelle antérieure");
+assert.ok(synergyAtTwentyFive > synergyAtTen, "chaque nouveau palier doit renforcer les ateliers suivants");
+assert.equal(model.workshopSynergyMultiplier("proportions", workshops, {}), 1, "le premier atelier ne reçoit pas de renfort antérieur");
+assert.ok(
+  model.workshopSupportBonus("algorithmics", 100, 0) > 0,
+  "la Console algorithmique doit pouvoir renforcer le secteur de spécialité"
+);
+assert.equal(
+  model.workshopSupportBonus(model.WORKSHOPS.at(-1).id, 200, 100),
+  0,
+  "le dernier atelier ne doit annoncer aucun renfort vers un atelier inexistant"
+);
 assert.ok(
   model.clickGain(0, workshops, 5, {}, 1_000_000) >= 250_000,
   "le clic doit rester proportionnel à la production avancée"

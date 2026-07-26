@@ -61,6 +61,10 @@ assert.match(app, /abandonLearningSession/, "une session abandonnée ne doit pas
 assert.match(styles, /\.event-card[^}]*pointer-events:\s*none/, "le bandeau ne doit pas intercepter les clics destinés à l'interface");
 assert.match(styles, /\.event-card button[^}]*pointer-events:\s*auto/, "les actions propres au bandeau doivent rester cliquables");
 assert.match(app, /workshopReveal/, "les ateliers doivent être révélés progressivement");
+assert.match(app, /Ateliers suivants \+/, "le bonus sortant doit être nommé explicitement");
+assert.match(app, /supportDetails[^]*% paliers[^]*% maîtrise/, "le bonus sortant doit distinguer les paliers de la maîtrise");
+assert.match(app, /index < lastAccessibleWorkshopIndex/, "le dernier atelier accessible ne doit pas annoncer de bonus sortant");
+assert.doesNotMatch(app, /Passerelle \+\$\{/, "le terme ambigu « Passerelle » ne doit plus être affiché");
 assert.match(html, /id="speciality-gate"[^>]*hidden/, "le passage vers la spécialité doit être invisible avant son éligibilité");
 assert.match(html, /id="speciality-dialog"/, "la révélation de la spécialité doit disposer d'une fenêtre spectaculaire");
 assert.doesNotMatch(html, /Spécialité\s*:\s*0\//, "aucun compteur ne doit divulguer le secteur verrouillé");

@@ -1470,6 +1470,9 @@
 
   function renderWorkshops() {
     const specialityIsUnlocked = specialityUnlocked();
+    const lastAccessibleWorkshopIndex = specialityIsUnlocked
+      ? Model.WORKSHOPS.length - 1
+      : Model.CORE_WORKSHOP_COUNT - 1;
     dom.workshopList.querySelectorAll("[data-speciality-only]").forEach(element => {
       element.hidden = !specialityIsUnlocked;
     });
@@ -1499,7 +1502,14 @@
       card.querySelector(`#rate-${workshop.id}`).innerHTML = `<b>${format(rate)}/s</b>`;
       card.querySelector(`#mastery-${workshop.id}`).textContent = skillStageSummary(workshop.id);
       const synergyParts = [];
-      if (support > 0) synergyParts.push(`Passerelle +${format(support * 100)} %`);
+      const hasAccessibleWorkshopAfter = index < lastAccessibleWorkshopIndex;
+      if (support > 0 && hasAccessibleWorkshopAfter) {
+        const milestoneSupport = Model.unlockedMilestoneCount(count) * Model.SYNERGY_PER_MILESTONE;
+        const masterySupport = Math.max(0, support - milestoneSupport);
+        const supportDetails = [`${format(milestoneSupport * 100)} % paliers`];
+        if (masterySupport > 0.001) supportDetails.push(`${format(masterySupport * 100)} % maîtrise`);
+        synergyParts.push(`Ateliers suivants +${format(support * 100)} % (${supportDetails.join(" + ")})`);
+      }
       if (received > 1.001) synergyParts.push(`reçoit ×${format(received)}`);
       const synergy = card.querySelector(`#synergy-${workshop.id}`);
       synergy.textContent = synergyParts.join(" · ");
