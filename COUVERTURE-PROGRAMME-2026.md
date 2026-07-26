@@ -41,4 +41,23 @@ Le jeu vise les élèves de première STI2D. Les activités géométriques rése
 | Probabilités | Événements liés à une variable aléatoire | Probabilités | Calcul de `P(X ≤ a)` à partir d'une loi |
 | Probabilités | Loi discrète et espérance | Probabilités | Espérance d'une variable aléatoire discrète |
 
-La grille comporte **34 capacités**, reliées à **57 formats de questions** issus de **56 modèles paramétriques**. Chaque modèle est validé automatiquement sur de nombreux jeux de valeurs avant publication.
+## Secteur mathématique de la spécialité STI2D
+
+Après son déblocage, un second secteur se fonde sur la partie mathématiques du [programme de première STI2D de physique-chimie et mathématiques](https://www.education.gouv.fr/media/11447/download). La physique et la chimie ne sont pas intégrées au jeu.
+
+| Domaine | Capacité travaillée | Atelier | Formats générés |
+| --- | --- | --- | --- |
+| Trigonométrie | Radians, cercle trigonométrique et mesure principale | Trigonométrie | Conversions, réduction d'angles |
+| Trigonométrie | Valeurs remarquables, angles associés et équations | Trigonométrie | Valeurs exactes, symétries, équations sur `[0 ; 2π[` |
+| Signaux | Amplitude, période, fréquence et phase | Signaux sinusoïdaux | Lecture de paramètres et calcul de valeurs |
+| Géométrie | Produit scalaire, norme, orthogonalité et Al-Kashi | Produit scalaire | Coordonnées, angles, longueurs |
+| Complexes | Parties réelle et imaginaire, conjugué et module | Nombres complexes | Identification et calculs |
+| Complexes | Somme, produit, quotient et affixes | Nombres complexes | Opérations et vecteurs |
+| Complexes | Argument et passages entre formes algébrique et trigonométrique | Forme trigonométrique | Notations `ρ(cos(θ) + sin(θ)i)` et `[ρ, θ]` |
+| Analyse | Dérivées approfondies et fonctions sinusoïdales | Analyse approfondie | Produit, inverse, sinus et cosinus |
+| Analyse | Approximation affine et méthode d'Euler | Analyse approfondie | Estimation locale et pas d'Euler |
+| Analyse | Primitives de polynômes et fonctions sinusoïdales | Analyse approfondie | Recherche de primitives |
+
+La forme exponentielle et les opérations entre nombres complexes sous forme trigonométrique, placées en terminale, sont volontairement exclues.
+
+L'ensemble du jeu comporte **44 capacités**, reliées à **91 formats de questions** issus de **90 modèles paramétriques**. Chaque modèle est validé automatiquement sur de nombreux jeux de valeurs avant publication.

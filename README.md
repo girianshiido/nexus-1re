@@ -20,7 +20,9 @@ Le jeu travaille notamment :
 - probabilités conditionnelles, Bernoulli et variables aléatoires ;
 - algorithmique, Python, listes, données et tableur.
 
-Les questions sont générées à partir de 56 modèles paramétriques produisant 57 formats. Un historique récent évite les répétitions strictes et varie les formats proposés. La correspondance détaillée avec les capacités officielles figure dans [la grille de couverture 2026](COUVERTURE-PROGRAMME-2026.md).
+Les questions sont générées à partir de 90 modèles paramétriques produisant 91 formats. Un historique récent évite les répétitions strictes et varie les formats proposés. La correspondance détaillée avec les capacités officielles figure dans [la grille de couverture 2026](COUVERTURE-PROGRAMME-2026.md).
+
+Un secteur avancé, invisible au début de la partie, ajoute ensuite uniquement la composante **mathématiques** du programme de première STI2D « physique-chimie et mathématiques » : trigonométrie, signaux sinusoïdaux, produit scalaire, nombres complexes, primitives et méthode d'Euler. Il s'ouvre définitivement lorsque les douze ateliers initiaux possèdent chacun 100 unités et que 200 points d'étalonnage sont disponibles.
 
 ## Lancer le jeu
 
@@ -33,6 +35,7 @@ Le jeu peut être installé sur l'écran d'accueil : via le menu du navigateur s
 - Le noyau central produit du flux à chaque clic.
 - L'**Hypercadence** commence à ×2. Sa charge redescend rapidement quand les clics s'arrêtent ; les points d'étalonnage permettent ensuite d'améliorer sa puissance, sa stabilité, sa durée et ses impulsions.
 - Douze ateliers mathématiques s'achètent progressivement et produisent du flux passivement. Leurs paliers 10, 25, 50, 100 et 200 débloquent des améliorations ×2 qu'il faut financer.
+- Après son déblocage, le secteur de spécialité ajoute six ateliers plus coûteux dont les améliorations utilisent des facteurs ×3 à ×10.
 - Des perturbations occasionnelles proposent de une à trois questions uniquement parmi les notions achetées. Une réponse rapide améliore la récompense, mais une erreur ne retire aucune ressource.
 - Chaque bonne réponse augmente la maîtrise de la notion et renforce légèrement son atelier.
 - Un nouveau cycle remet à zéro le flux et les ateliers, conserve la maîtrise et accorde un multiplicateur permanent.

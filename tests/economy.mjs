@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
 import model from "../game-model.js";
 
-assert.equal(model.WORKSHOPS.length, 12, "douze ateliers sont attendus pour couvrir le programme 2026");
-assert.deepEqual(model.WORKSHOPS.map(item => item.id), [
+assert.equal(model.WORKSHOPS.length, 18, "douze ateliers initiaux et six ateliers de spécialité sont attendus");
+assert.deepEqual(model.WORKSHOPS.slice(0, model.CORE_WORKSHOP_COUNT).map(item => item.id), [
   "proportions", "numeric", "evolutions", "units", "logic", "algebra",
   "functions", "sequences", "derivatives", "statistics", "probability", "algorithmics"
+]);
+assert.deepEqual(model.WORKSHOPS.slice(model.CORE_WORKSHOP_COUNT).map(item => item.id), [
+  "trigonometry", "sinusoids", "vectors", "complexAlgebra", "complexTrig", "advancedAnalysis"
 ]);
 
 for (const workshop of model.WORKSHOPS) {
@@ -14,8 +17,9 @@ for (const workshop of model.WORKSHOPS) {
   model.MILESTONES.forEach((milestone, level) => {
     const productionBefore = model.workshopProduction(workshop.id, milestone, 0, level);
     const cost = model.workshopUpgradeCost(workshop.id, level);
-    const target = productionBefore * model.WORKSHOP_UPGRADE_SECONDS[level];
-    assert.ok(cost >= target && cost < target + 1, `${workshop.id}: le prix de palier doit correspondre au temps de production visé`);
+    const seconds = (workshop.speciality ? model.SPECIALITY_UPGRADE_SECONDS : model.WORKSHOP_UPGRADE_SECONDS)[level];
+    const target = productionBefore * seconds;
+    assert.ok(Math.abs(cost - target) <= Math.max(1, target * 1e-12), `${workshop.id}: le prix de palier doit correspondre au temps de production visé`);
   });
 }
 
@@ -23,6 +27,8 @@ assert.equal(model.milestoneMultiplier(9, 0), 1);
 assert.equal(model.milestoneMultiplier(10, 0), 1, "un palier ne doit plus donner un bonus gratuit");
 assert.equal(model.milestoneMultiplier(10, 1), 2, "la première amélioration achetée doit doubler la production");
 assert.equal(model.milestoneMultiplier(25, 2), 4);
+assert.equal(model.milestoneMultiplier(10, 1, "trigonometry"), 3, "la première amélioration de spécialité doit être un ×3");
+assert.equal(model.milestoneMultiplier(25, 2, "complexTrig"), 20, "les améliorations de spécialité doivent utiliser des facteurs plus lourds");
 assert.equal(model.nextMilestone(25), 50);
 assert.equal(model.workshopUpgradeStatus("proportions", 9, 0).unlocked, false);
 assert.equal(model.workshopUpgradeStatus("proportions", 10, 0).unlocked, true);
@@ -85,6 +91,21 @@ assert.equal(comfort.autoUpgrades, true);
 assert.equal(comfort.errorNotebook, true);
 assert.equal(comfort.reserveSeconds, 90);
 assert.equal(comfort.eventWindowMs, 60000);
+
+const specialityWorkshops = Object.fromEntries(model.WORKSHOPS.map(item => [item.id, 0]));
+let specialityRequirements = model.specialityRequirements(specialityWorkshops, 500, {});
+assert.equal(specialityRequirements.met, false, "les points seuls ne doivent pas révéler la spécialité");
+model.WORKSHOPS.slice(0, model.CORE_WORKSHOP_COUNT).forEach(workshop => { specialityWorkshops[workshop.id] = 100; });
+specialityRequirements = model.specialityRequirements(specialityWorkshops, 199, {});
+assert.equal(specialityRequirements.met, false, "199 points ne doivent pas suffire");
+specialityRequirements = model.specialityRequirements(specialityWorkshops, 200, {});
+assert.equal(specialityRequirements.met, true, "100 unités dans chaque atelier et 200 points doivent ouvrir le passage");
+assert.equal(model.specialityUnlocked({ specialityAccess: 1 }), true);
+assert.equal(model.availableCalibration(200, { specialityAccess: 1 }), 0, "l'ouverture doit dépenser les 200 points disponibles");
+assert.ok(
+  model.workshopCost("trigonometry", 0) > model.workshopCost("algorithmics", 100),
+  "le premier atelier de spécialité doit être sensiblement plus difficile à atteindre"
+);
 
 assert.equal(model.cycleGain(model.cycleTarget(1), 1), 1);
 assert.equal(model.cycleGain(model.cycleTarget(1) * 4, 1), 2);

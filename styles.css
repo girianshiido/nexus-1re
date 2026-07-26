@@ -309,6 +309,11 @@ button:not(:disabled) { cursor: pointer; }
 .bulk-button { min-width: 50px; padding: 7px 10px; border: 0; border-radius: 8px; color: var(--muted); background: transparent; font-size: 11px; font-weight: 800; }
 .bulk-button.active { color: #062027; background: var(--cyan); }
 .workshop-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 22px; }
+.workshop-sector-title { grid-column: 1 / -1; display: flex; gap: 12px; align-items: center; margin: 14px 0 2px; color: #f1d1ff; font-size: 10px; font-weight: 900; letter-spacing: 0.18em; text-transform: uppercase; }
+.workshop-sector-title::before, .workshop-sector-title::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, rgba(196, 124, 255, 0.58), transparent); }
+.workshop-card.speciality-workshop { border-color: rgba(196, 124, 255, 0.3); background: linear-gradient(145deg, rgba(27, 13, 48, 0.62), rgba(5, 23, 34, 0.72)); }
+.workshop-card.speciality-workshop::before { width: 3px; opacity: 0.9; background: linear-gradient(#ffd36b, #c47cff, #66e4e7); }
+.workshop-card.speciality-workshop .workshop-icon { color: #f3d5ff; border-color: rgba(196, 124, 255, 0.34); background: rgba(196, 124, 255, 0.1); }
 .workshop-card { position: relative; display: grid; grid-template-columns: 54px 1fr auto; gap: 13px; align-items: center; min-height: 112px; padding: 14px; overflow: hidden; border: 1px solid var(--line); border-radius: 16px; background: rgba(5, 23, 34, 0.62); }
 .workshop-card::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 2px; background: linear-gradient(var(--violet), var(--cyan)); opacity: 0.45; }
 .workshop-card.owned { border-color: rgba(102, 228, 231, 0.25); }
@@ -727,6 +732,13 @@ dialog::backdrop { background: rgba(1, 9, 14, 0.82); backdrop-filter: blur(8px);
 .upgrade-card-copy p { margin-top: 4px; color: var(--muted); font-size: 10px; }
 .upgrade-card-copy small { margin-top: 7px; color: var(--cyan); font-size: 9px; }
 .upgrade-card-action { color: #e4c5ff; font-size: 9px; font-weight: 900; }
+.speciality-gate { display: grid; grid-template-columns: 58px minmax(0, 1fr) auto; gap: 16px; align-items: center; margin: 22px 0; padding: 18px; overflow: hidden; border: 1px solid rgba(255, 211, 107, 0.6); border-radius: 17px; background: radial-gradient(circle at 10% 20%, rgba(196, 124, 255, 0.2), transparent 35%), linear-gradient(135deg, rgba(255, 211, 107, 0.09), rgba(92, 47, 130, 0.18)); box-shadow: 0 12px 34px rgba(94, 49, 140, 0.2); }
+.speciality-gate[hidden] { display: none; }
+.speciality-gate-mark { display: grid; place-items: center; width: 54px; height: 54px; border: 1px solid rgba(255, 211, 107, 0.5); border-radius: 50%; color: #ffd36b; background: rgba(255, 211, 107, 0.08); font-size: 27px; box-shadow: 0 0 28px rgba(255, 211, 107, 0.2); }
+.speciality-gate h2, .speciality-gate p { margin: 0; }
+.speciality-gate h2 { margin: 3px 0 5px; font-size: 17px; }
+.speciality-gate > div > p:last-child { color: var(--muted); font-size: 10px; line-height: 1.45; }
+.speciality-gate-button { padding: 12px 16px; border: 1px solid #ffe081; border-radius: 12px; color: #271a02; background: linear-gradient(145deg, #fff0a7, #efb635); box-shadow: 0 6px 20px rgba(239, 182, 53, 0.24); font-size: 10px; font-weight: 900; }
 
 .network-cycle {
   display: grid;
@@ -916,6 +928,31 @@ dialog::backdrop { background: rgba(1, 9, 14, 0.82); backdrop-filter: blur(8px);
 }
 .comfort-protocol { border-color: rgba(255, 186, 107, 0.2); }
 .comfort-protocol .calibration-icon { color: var(--orange); background: rgba(255, 186, 107, 0.08); }
+
+.speciality-dialog { width: min(760px, calc(100% - 28px)); background: rgba(1, 8, 15, 0.84); }
+.speciality-dialog::backdrop { background: radial-gradient(circle at center, rgba(69, 25, 100, 0.52), rgba(1, 7, 12, 0.94)); backdrop-filter: blur(8px); }
+.speciality-dialog-card { position: relative; width: 100%; overflow: hidden; padding: 38px 34px 30px; border-color: rgba(255, 218, 119, 0.64); background: radial-gradient(circle at 50% 8%, rgba(196, 124, 255, 0.26), transparent 36%), linear-gradient(160deg, #10152d, #071b28 72%); box-shadow: 0 0 90px rgba(196, 124, 255, 0.24), inset 0 0 50px rgba(102, 228, 231, 0.04); text-align: center; animation: speciality-reveal 850ms cubic-bezier(.16,.86,.25,1) both; }
+.speciality-dialog-card h2 { margin: 8px 0 12px; color: #fff4bd; font-size: clamp(27px, 5vw, 48px); line-height: 1; letter-spacing: 0.07em; text-shadow: 0 0 28px rgba(255, 211, 107, 0.32); }
+.speciality-dialog-card > p:not(.eyebrow) { max-width: 560px; margin: 0 auto; color: #c7d6e2; font-size: 13px; line-height: 1.55; }
+.speciality-emblem { display: grid; place-items: center; width: 94px; height: 94px; margin: 0 auto 16px; border: 1px solid rgba(255, 222, 131, 0.72); border-radius: 50%; color: #ffe386; background: radial-gradient(circle, rgba(255, 225, 134, 0.18), rgba(196, 124, 255, 0.07)); box-shadow: 0 0 44px rgba(255, 220, 117, 0.24); animation: speciality-pulse 2.4s ease-in-out infinite; }
+.speciality-emblem span { font-size: 44px; }
+.speciality-preview { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 24px 0 18px; }
+.speciality-preview span { padding: 9px 6px; border: 1px solid rgba(196, 124, 255, 0.25); border-radius: 99px; color: #e5c2ff; background: rgba(196, 124, 255, 0.06); font-size: 9px; font-weight: 800; }
+.speciality-price { display: flex; justify-content: center; gap: 8px; align-items: baseline; margin: 6px 0 18px; }
+.speciality-price small { color: var(--muted); }
+.speciality-price strong { color: #ffd66e; font-size: 15px; }
+.speciality-note { display: block; margin-top: 12px; color: var(--muted); font-size: 9px; }
+.speciality-stars { position: absolute; inset: 0; pointer-events: none; }
+.speciality-stars i { position: absolute; width: 4px; height: 4px; border-radius: 50%; background: #fff2af; box-shadow: 0 0 12px #ffd66e; animation: speciality-star 2.6s ease-in-out infinite; }
+.speciality-stars i:nth-child(1) { top: 13%; left: 12%; }
+.speciality-stars i:nth-child(2) { top: 24%; right: 14%; animation-delay: .4s; }
+.speciality-stars i:nth-child(3) { top: 52%; left: 7%; animation-delay: .8s; }
+.speciality-stars i:nth-child(4) { top: 65%; right: 8%; animation-delay: 1.2s; }
+.speciality-stars i:nth-child(5) { bottom: 10%; left: 26%; animation-delay: 1.6s; }
+.speciality-stars i:nth-child(6) { bottom: 13%; right: 28%; animation-delay: 2s; }
+@keyframes speciality-reveal { from { opacity: 0; transform: scale(.72) rotateX(18deg); filter: blur(9px); } to { opacity: 1; transform: scale(1) rotateX(0); filter: blur(0); } }
+@keyframes speciality-pulse { 50% { transform: scale(1.07) rotate(8deg); box-shadow: 0 0 70px rgba(255, 220, 117, 0.44); } }
+@keyframes speciality-star { 50% { opacity: .25; transform: scale(.35); } }
 .comfort-controls {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -991,6 +1028,9 @@ footer { width: min(1180px, calc(100% - 32px)); margin-top: 15px; padding-bottom
   .core-panel { grid-row: auto; min-height: 510px; }
   .shop-panel { grid-row: auto; grid-column: auto; }
   .workshop-list, .workshop-upgrade-list { grid-template-columns: 1fr; }
+  .speciality-gate { grid-template-columns: 45px 1fr; }
+  .speciality-gate-mark { width: 42px; height: 42px; font-size: 21px; }
+  .speciality-gate-button { grid-column: 1 / -1; width: 100%; }
   .network-summary { grid-template-columns: 1fr 1fr; }
   .network-detail { grid-template-columns: 1fr; }
   .learning-heading { display: block; }
@@ -1058,6 +1098,9 @@ footer { width: min(1180px, calc(100% - 32px)); margin-top: 15px; padding-bottom
   .calibration-dialog-card .calibration-lab-head { display: block; padding-right: 42px; }
   .calibration-dialog-card .calibration-lab-head > span { display: block; margin-top: 8px; text-align: left; }
   .event-dialog-card { padding-bottom: calc(86px + env(safe-area-inset-bottom, 0px)); }
+  .speciality-dialog-card { padding: 30px 16px 22px; }
+  .speciality-preview { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .speciality-price { display: grid; gap: 3px; }
   #event-next:not([hidden]) {
     bottom: calc(8px + env(safe-area-inset-bottom, 0px));
     width: calc(100% - 16px);

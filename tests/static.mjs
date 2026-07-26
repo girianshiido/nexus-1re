@@ -61,6 +61,13 @@ assert.match(app, /abandonLearningSession/, "une session abandonnée ne doit pas
 assert.match(styles, /\.event-card[^}]*pointer-events:\s*none/, "le bandeau ne doit pas intercepter les clics destinés à l'interface");
 assert.match(styles, /\.event-card button[^}]*pointer-events:\s*auto/, "les actions propres au bandeau doivent rester cliquables");
 assert.match(app, /workshopReveal/, "les ateliers doivent être révélés progressivement");
+assert.match(html, /id="speciality-gate"[^>]*hidden/, "le passage vers la spécialité doit être invisible avant son éligibilité");
+assert.match(html, /id="speciality-dialog"/, "la révélation de la spécialité doit disposer d'une fenêtre spectaculaire");
+assert.doesNotMatch(html, /Spécialité\s*:\s*0\//, "aucun compteur ne doit divulguer le secteur verrouillé");
+assert.match(app, /specialityRequirements/, "les 100 unités et 200 points doivent être contrôlés avant la révélation");
+assert.match(app, /accessibleSubskills/, "les compteurs pédagogiques doivent exclure la spécialité tant qu'elle est verrouillée");
+assert.match(app, /coreSkills/, "le mode épreuve anticipée doit rester limité aux douze ateliers initiaux");
+assert.match(styles, /@keyframes speciality-reveal/, "l'ouverture du nouveau secteur doit être mise en scène");
 assert.match(styles, /#event-next:not\(\[hidden\]\)[^]*position:\s*fixed/, "l'action de fin d'intervention doit rester visible");
 assert.match(html, /id="reset-mobile-button"/, "la réinitialisation doit être disponible dans l'onglet Réseau sur mobile");
 assert.equal((html.match(/id="calibration-open-upgrades"/g) || []).length, 1, "les protocoles permanents doivent avoir un seul point d'accès");

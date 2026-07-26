@@ -43,7 +43,7 @@
 
   const SUBSCRIPT_CHARACTERS = { "₀": "0", "₁": "1", "₂": "2", "₃": "3", "₄": "4", "₅": "5", "₆": "6", "₇": "7", "₈": "8", "₉": "9", "₊": "+", "₋": "−", "ₙ": "n" };
   const SUPERSCRIPT_CHARACTERS = { "⁰": "0", "¹": "1", "²": "2", "³": "3", "⁴": "4", "⁵": "5", "⁶": "6", "⁷": "7", "⁸": "8", "⁹": "9", "⁺": "+", "⁻": "−" };
-  const MATH_INLINE_PATTERN = /P\([^()]*\)(?:\s*=\s*[−-]?\d+(?:[,.]\d+)?)?|u[₀₁₂₃₄₅₆₇₈₉₊₋ₙ]+(?:\s*=\s*(?:u[₀₁₂₃₄₅₆₇₈₉₊₋ₙ]+|[−-]?\d+)(?:\s*[+−-]\s*\d+)?)?|(?:[−-]?\d*)?\(x\s*[+−-]\s*\d+\)(?:\(x\s*[+−-]\s*\d+\))+(?:\s*=\s*0)?|(?:f′?\(x\)|[xy])\s*[=<>≤≥]\s*[−-]?\d+(?:\s+(?:ou|et)\s*[xy]\s*[=<>≤≥]\s*[−-]?\d+)?|\d+\s*×\s*10[⁻⁰¹²³⁴⁵⁶⁷⁸⁹]+/g;
+  const MATH_INLINE_PATTERN = /(?:√?\d+|ρ)\(cos\([^()]+\)\s*\+\s*sin\([^()]+\)i\)|\[(?:√?\d+|ρ)\s*,\s*[^,\]]+\]|(?:cos|sin)\([^()]+\)|P\([^()]*\)(?:\s*=\s*[−-]?\d+(?:[,.]\d+)?)?|u[₀₁₂₃₄₅₆₇₈₉₊₋ₙ]+(?:\s*=\s*(?:u[₀₁₂₃₄₅₆₇₈₉₊₋ₙ]+|[−-]?\d+)(?:\s*[+−-]\s*\d+)?)?|(?:[−-]?\d*)?\(x\s*[+−-]\s*\d+\)(?:\(x\s*[+−-]\s*\d+\))+(?:\s*=\s*0)?|(?:f′?\(x\)|[xy])\s*[=<>≤≥]\s*[−-]?\d+(?:\s+(?:ou|et)\s*[xy]\s*[=<>≤≥]\s*[−-]?\d+)?|\d+\s*×\s*10[⁻⁰¹²³⁴⁵⁶⁷⁸⁹]+/g;
 
   function appendMathCharacters(target, text) {
     const fragments = String(text).split(/([₀₁₂₃₄₅₆₇₈₉₊₋ₙ]+|[⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻]+)/g);
@@ -82,6 +82,7 @@
     flux: $("#flux-value"),
     production: $("#production-value"),
     calibration: $("#calibration-value"),
+    brandSubtitle: $("#brand-subtitle"),
     cycle: $("#cycle-value"),
     cycleRing: $("#cycle-ring"),
     cycleProgressText: $("#cycle-progress-text"),
@@ -131,6 +132,11 @@
     calibrationOpenUpgrades: $("#calibration-open-upgrades"),
     calibrationDialog: $("#calibration-dialog"),
     calibrationClose: $("#calibration-close"),
+    specialityGate: $("#speciality-gate"),
+    specialityGateButton: $("#speciality-gate-button"),
+    specialityDialog: $("#speciality-dialog"),
+    specialityClose: $("#speciality-close"),
+    specialityUnlock: $("#speciality-unlock"),
     helpDialog: $("#help-dialog"),
     programmeDialog: $("#programme-dialog"),
     programmeSummary: $("#programme-summary"),
@@ -219,6 +225,7 @@
       questionReports: [],
       activeTab: "core",
       workshopReveal: 1,
+      specialityRevealSeen: false,
       learning: {},
       learningSequence: 0,
       diagnosticsCompleted: 0,
@@ -274,6 +281,11 @@
           .filter(index => index >= 0);
         const highestKnown = knownIndexes.length ? Math.max(...knownIndexes) : 0;
         merged.workshopReveal = Math.min(Model.WORKSHOPS.length - 1, Math.max(1, highestKnown + 1));
+      }
+      if (Model.specialityUnlocked(merged.calibrationUpgrades)) {
+        merged.workshopReveal = Math.max(Model.CORE_WORKSHOP_COUNT, merged.workshopReveal);
+      } else {
+        merged.workshopReveal = Math.min(Model.CORE_WORKSHOP_COUNT - 1, merged.workshopReveal);
       }
       return merged;
     } catch {
@@ -370,6 +382,14 @@
   function hyperStats() { return Model.hyperStats(state.calibrationUpgrades); }
   function comfortStats() { return Model.comfortStats(state.calibrationUpgrades); }
   function permanentMultiplier() { return Model.permanentMultiplier(state.calibration); }
+  function specialityUnlocked() { return Model.specialityUnlocked(state.calibrationUpgrades); }
+  function accessibleWorkshops() {
+    return specialityUnlocked() ? Model.WORKSHOPS : Model.WORKSHOPS.slice(0, Model.CORE_WORKSHOP_COUNT);
+  }
+  function accessibleSubskills() {
+    const skills = new Set(accessibleWorkshops().map(workshop => workshop.id));
+    return Engine.SUBSKILLS.filter(subskill => skills.has(subskill.skill));
+  }
   function baseProduction() { return Model.baseProduction(state.workshops, state.mastery, state.workshopUpgrades); }
   function clickValue() { return Model.clickGain(state.totalClicks, state.workshops, state.calibration, state.calibrationUpgrades, baseProduction()); }
   function boostMultiplier() { return isBoosted() ? state.boostMultiplier : 1; }
@@ -483,10 +503,13 @@
   }
 
   function createProgrammeCoverage() {
-    const capabilities = Engine.PROGRAMME_2026.flatMap(section => section.capabilities);
+    const sections = specialityUnlocked()
+      ? [...Engine.PROGRAMME_2026, ...Engine.PROGRAMME_SPECIALITE]
+      : Engine.PROGRAMME_2026;
+    const capabilities = sections.flatMap(section => section.capabilities);
     const formats = new Set(capabilities.flatMap(capability => capability.kinds));
-    dom.programmeSummary.textContent = `${capabilities.length} capacités reliées à ${formats.size} formats de questions générées, répartis entre ${Model.WORKSHOPS.length} ateliers.`;
-    dom.programmeGrid.innerHTML = Engine.PROGRAMME_2026.map(section => `
+    dom.programmeSummary.textContent = `${capabilities.length} capacités reliées à ${formats.size} formats de questions générées, répartis entre ${accessibleWorkshops().length} ateliers.`;
+    dom.programmeGrid.innerHTML = sections.map(section => `
       <section class="programme-section">
         <h3>${section.title}</h3>
         <ul>${section.capabilities.map(capability => `
@@ -741,7 +764,7 @@
 
   function buyWorkshop(id) {
     const workshop = Model.workshopById(id);
-    if (!workshop) return;
+    if (!workshop || (workshop.speciality && !specialityUnlocked())) return;
     const quote = workshopQuote(workshop);
     if (!quote.quantity || quote.cost > state.flux) return;
     const previousCount = state.workshops[id] || 0;
@@ -750,7 +773,9 @@
     state.workshops[id] += quote.quantity;
     const workshopIndex = Model.WORKSHOPS.findIndex(item => item.id === id);
     const previousReveal = state.workshopReveal;
-    if (workshopIndex === state.workshopReveal && state.workshopReveal < Model.WORKSHOPS.length - 1) {
+    if (workshopIndex === state.workshopReveal
+      && state.workshopReveal < Model.WORKSHOPS.length - 1
+      && (state.workshopReveal + 1 < Model.CORE_WORKSHOP_COUNT || specialityUnlocked())) {
       state.workshopReveal += 1;
     }
     playSound("buy");
@@ -761,7 +786,8 @@
     const count = state.workshops[id];
     const nextUpgradeMilestone = Model.MILESTONES[state.workshopUpgrades[id] || 0];
     if (nextUpgradeMilestone && previousCount < nextUpgradeMilestone && count >= nextUpgradeMilestone) {
-      showToast(`Palier ${nextUpgradeMilestone} atteint : une amélioration ×2 est disponible pour ${workshop.name}.`);
+      const factor = Model.workshopUpgradeFactor(id, state.workshopUpgrades[id] || 0);
+      showToast(`Palier ${nextUpgradeMilestone} atteint : une amélioration ×${factor} est disponible pour ${workshop.name}.`);
     } else if (state.workshopReveal > previousReveal) {
       const revealed = Model.WORKSHOPS[state.workshopReveal];
       showToast(`Nouvel atelier découvert : ${revealed.name}.`);
@@ -780,7 +806,7 @@
     state.workshopUpgrades[id] = level + 1;
     if (!automatic) {
       playSound("buy");
-      showToast(`${workshop.name} amélioré : sa production est doublée.`);
+      showToast(`${workshop.name} amélioré : sa production est multipliée par ${Model.workshopUpgradeFactor(id, level)}.`);
     }
     renderWorkshops();
     renderWorkshopUpgrades();
@@ -799,6 +825,7 @@
     if (id === "autoUpgrades") return level ? "Collecte automatique disponible" : "Collecte manuelle";
     if (id === "errorNotebook") return level ? `${plural(state.recentMistakes.length, "notion")} dans le carnet` : "Carnet verrouillé";
     if (id === "eventBeacon") return level ? `Signaux disponibles ${format(comfort.eventWindowMs / 1000)} s` : "Signaux disponibles 30 s";
+    if (id === "specialityAccess") return level ? "Secteur de spécialité actif" : "Secteur verrouillé";
     return "";
   }
 
@@ -810,6 +837,11 @@
     const available = Model.availableCalibration(state.calibration, state.calibrationUpgrades);
     if (!Number.isFinite(cost) || cost > available) return;
     state.calibrationUpgrades[id] = level + 1;
+    if (id === "specialityAccess") {
+      state.workshopReveal = Math.max(Model.CORE_WORKSHOP_COUNT, state.workshopReveal);
+      state.specialityRevealSeen = true;
+      dom.specialityDialog.close();
+    }
     if (id === "autoUpgrades") state.comfortSettings.autoUpgrades = true;
     if (id === "fluxReserve") state.comfortSettings.reserve = true;
     if (id === "eventBeacon") state.comfortSettings.eventAlert = true;
@@ -818,9 +850,42 @@
     renderCalibrationUpgrades();
     renderComfortControls();
     renderLearning();
+    createProgrammeCoverage();
+    renderSpecialityState();
+    renderWorkshops();
+    renderWorkshopUpgrades();
     showToast(upgrade.protocol && upgrade.costs.length === 1
       ? `${upgrade.name} acquis définitivement.`
       : `${upgrade.name} passe au niveau ${level + 1}.`);
+  }
+
+  function playSpecialityReveal() {
+    if (!state.soundEnabled) return;
+    [196, 294, 392, 587, 784].forEach((frequency, index) => {
+      setTimeout(() => playTone(frequency, 0.32, { volume: 0.035, type: index < 2 ? "sine" : "triangle" }), index * 115);
+    });
+  }
+
+  function showSpecialityReveal() {
+    if (specialityUnlocked() || state.specialityRevealSeen || dom.specialityDialog.open) return;
+    const requirements = Model.specialityRequirements(state.workshops, state.calibration, state.calibrationUpgrades);
+    if (!requirements.met || eventRun || document.querySelector("dialog[open]")) return;
+    state.specialityRevealSeen = true;
+    save();
+    playSpecialityReveal();
+    navigator.vibrate?.([100, 60, 180, 80, 260]);
+    dom.specialityDialog.showModal();
+  }
+
+  function renderSpecialityState() {
+    const unlocked = specialityUnlocked();
+    const requirements = Model.specialityRequirements(state.workshops, state.calibration, state.calibrationUpgrades);
+    dom.brandSubtitle.textContent = unlocked
+      ? "1re Spécialité · Mathématiques"
+      : "Laboratoire de mathématiques STI2D";
+    dom.specialityGate.hidden = unlocked || !requirements.met;
+    dom.specialityUnlock.disabled = !requirements.met || unlocked;
+    dom.specialityGateButton.disabled = !requirements.met || unlocked;
   }
 
   function protectedFlux() {
@@ -923,12 +988,14 @@
   }
 
   function learningSessionDefinition(mode, targetSkill) {
-    const allSkills = Model.WORKSHOPS.map(workshop => workshop.id);
+    const allSkills = accessibleWorkshops().map(workshop => workshop.id);
+    const coreSkills = Model.WORKSHOPS.slice(0, Model.CORE_WORKSHOP_COUNT).map(workshop => workshop.id);
     if (mode === "diagnostic") {
+      const count = allSkills.length;
       return {
         title: "Diagnostic du réseau",
-        kicker: "Parcours adaptatif · 12 questions",
-        questionCount: 12,
+        kicker: `Parcours adaptatif · ${count} questions`,
+        questionCount: count,
         skills: allSkills,
         description: "Une question par atelier pour repérer tes priorités."
       };
@@ -938,7 +1005,7 @@
         title: "Automatismes — format épreuve",
         kicker: "Entraînement · 12 QCM · sans calculatrice",
         questionCount: 12,
-        skills: allSkills,
+        skills: coreSkills,
         description: "Une seule réponse par question, puis un bilan noté sur 6."
       };
     }
@@ -1338,9 +1405,16 @@
 
   function createWorkshopCards() {
     const fragment = document.createDocumentFragment();
-    Model.WORKSHOPS.forEach(workshop => {
+    Model.WORKSHOPS.forEach((workshop, index) => {
+      if (index === Model.CORE_WORKSHOP_COUNT) {
+        const heading = document.createElement("div");
+        heading.className = "workshop-sector-title";
+        heading.dataset.specialityOnly = "true";
+        heading.textContent = "Secteur 1re Spécialité";
+        fragment.append(heading);
+      }
       const card = document.createElement("article");
-      card.className = "workshop-card";
+      card.className = `workshop-card${workshop.speciality ? " speciality-workshop" : ""}`;
       card.dataset.workshop = workshop.id;
       card.innerHTML = `
         <span class="workshop-count" id="count-bg-${workshop.id}">0</span>
@@ -1395,11 +1469,15 @@
   }
 
   function renderWorkshops() {
+    const specialityIsUnlocked = specialityUnlocked();
+    dom.workshopList.querySelectorAll("[data-speciality-only]").forEach(element => {
+      element.hidden = !specialityIsUnlocked;
+    });
     Model.WORKSHOPS.forEach((workshop, index) => {
       const count = state.workshops[workshop.id] || 0;
       const card = dom.workshopList.querySelector(`[data-workshop="${workshop.id}"]`);
       if (!card) return;
-      card.hidden = index > state.workshopReveal;
+      card.hidden = (workshop.speciality && !specialityIsUnlocked) || index > state.workshopReveal;
       const quote = workshopQuote(workshop);
       const button = card.querySelector(".workshop-buy");
       const affordable = quote.quantity > 0 && quote.cost <= state.flux;
@@ -1445,7 +1523,8 @@
           : `${format(Model.workshopCost(workshop.id, count))} flux`;
     });
     const teaser = dom.workshopList.querySelector("#next-workshop-teaser");
-    const next = Model.WORKSHOPS[state.workshopReveal + 1];
+    const nextCandidate = Model.WORKSHOPS[state.workshopReveal + 1];
+    const next = nextCandidate?.speciality && !specialityIsUnlocked ? null : nextCandidate;
     teaser.hidden = !next;
     if (next) {
       const gate = Model.WORKSHOPS[state.workshopReveal];
@@ -1460,10 +1539,15 @@
       const status = Model.workshopUpgradeStatus(workshop.id, count, level);
       const card = dom.workshopUpgradeList.querySelector(`[data-workshop-upgrade-card="${workshop.id}"]`);
       if (!card) return;
-      const ready = index <= state.workshopReveal && status.unlocked && !status.completed && status.cost <= state.flux;
+      const ready = (!workshop.speciality || specialityUnlocked())
+        && index <= state.workshopReveal
+        && status.unlocked
+        && !status.completed
+        && status.cost <= state.flux;
       card.hidden = !ready;
+      const factor = Model.workshopUpgradeFactor(workshop.id, level);
       card.querySelector(`#upgrade-effect-${workshop.id}`).textContent = `${format(status.cost)} flux · niveau ${level + 1}`;
-      card.querySelector(`#upgrade-status-${workshop.id}`).textContent = `Palier ${status.milestone} atteint : production ×2 pour ce cycle`;
+      card.querySelector(`#upgrade-status-${workshop.id}`).textContent = `Palier ${status.milestone} atteint : production ×${factor} pour ce cycle`;
     });
   }
 
@@ -1471,6 +1555,7 @@
     const fragment = document.createDocumentFragment();
     let currentGroup = null;
     Model.CALIBRATION_UPGRADES.forEach(upgrade => {
+      if (upgrade.hidden) return;
       const group = upgrade.protocol ? "Confort du laboratoire" : "Puissance du Noyau";
       if (group !== currentGroup) {
         const heading = document.createElement("h3");
@@ -1560,7 +1645,8 @@
 
   function renderLearning() {
     const nowValue = now();
-    const counts = Learning.summarize(Engine.SUBSKILLS, state.learning, nowValue);
+    const availableSubskills = accessibleSubskills();
+    const counts = Learning.summarize(availableSubskills, state.learning, nowValue);
     const stageOrder = ["mastered", "review", "fragile", "training", "discovery"];
     dom.learningStageSummary.innerHTML = stageOrder.map(stage => `
       <article class="learning-stage stage-${stage}">
@@ -1569,7 +1655,7 @@
       </article>
     `).join("");
 
-    const activePriorities = Engine.SUBSKILLS
+    const activePriorities = availableSubskills
       .map(subskill => ({
         ...subskill,
         stage: Learning.stageFor(state.learning[subskill.id], nowValue),
@@ -1587,7 +1673,7 @@
       `).join("")
       : "<p class=\"learning-empty\">Aucune priorité urgente : consolide maintenant à distance.</p>";
 
-    dom.learningWorkshops.innerHTML = Model.WORKSHOPS
+    dom.learningWorkshops.innerHTML = accessibleWorkshops()
       .filter((workshop, index) => index <= state.workshopReveal)
       .map(workshop => {
         const subskills = Engine.SUBSKILLS.filter(item => item.skill === workshop.id);
@@ -1600,7 +1686,9 @@
       }).join("");
 
     if (!state.diagnosticsCompleted) {
-      dom.learningRecommendation.textContent = "Diagnostic conseillé : 12 questions couvrent les 12 ateliers et fixent les premières priorités.";
+      dom.learningRecommendation.textContent = specialityUnlocked()
+        ? "Diagnostic conseillé : 18 questions couvrent les deux secteurs et fixent les premières priorités."
+        : "Diagnostic conseillé : 12 questions couvrent les 12 ateliers et fixent les premières priorités.";
     } else if (counts.review) {
       dom.learningRecommendation.textContent = `${counts.review} ${counts.review === 1 ? "notion est prête" : "notions sont prêtes"} pour une révision espacée.`;
     } else if (counts.fragile) {
@@ -1608,9 +1696,10 @@
     } else {
       dom.learningRecommendation.textContent = "Le parcours alterne découverte, entraînement et consolidation espacée.";
     }
+    const diagnosticCount = accessibleWorkshops().length;
     dom.diagnosticButton.textContent = state.diagnosticsCompleted
-      ? "Refaire un diagnostic · 12 questions"
-      : "Diagnostic · 12 questions";
+      ? `Refaire un diagnostic · ${diagnosticCount} questions`
+      : `Diagnostic · ${diagnosticCount} questions`;
     dom.examButton.textContent = state.examBest === null
       ? "Automatismes épreuve · 12 QCM"
       : `Automatismes épreuve · record ${String(state.examBest).replace(".", ",")}/6`;
@@ -1703,7 +1792,8 @@
     const owned = Model.totalOwned(state.workshops);
     const cycleTarget = Model.cycleTarget(state.cycle);
     const cycleGain = Model.cycleGain(state.cycleFlux, state.cycle);
-    const masteryCounts = Learning.summarize(Engine.SUBSKILLS, state.learning, nowValue);
+    const availableSubskills = accessibleSubskills();
+    const masteryCounts = Learning.summarize(availableSubskills, state.learning, nowValue);
     const unlocked = unlockedWorkshops();
     const click = clickValue();
     const availableCalibration = Model.availableCalibration(state.calibration, state.calibrationUpgrades);
@@ -1720,7 +1810,7 @@
     dom.cycleGain.textContent = plural(cycleGain, "point");
     dom.permanentMultiplier.textContent = `Production permanente ×${format(permanentMultiplier())}`;
     dom.cycleButton.disabled = cycleGain < 1;
-    dom.masteryTotal.textContent = `${masteryCounts.mastered}/${Engine.SUBSKILLS.length}`;
+    dom.masteryTotal.textContent = `${masteryCounts.mastered}/${availableSubskills.length}`;
 
     dom.corePanel.classList.toggle("hyper", hyper);
     dom.clickGain.textContent = `+${format(click * (hyper ? cadence.multiplier : 1))} flux par clic${hyper ? ` · ×${format(cadence.multiplier)}` : ""}`;
@@ -1751,13 +1841,15 @@
     if (hyper) dom.activeEffect.textContent = `Hypercadence · ${Math.ceil((state.hyperUntil - nowValue) / 1000)} s`;
     else if (boost) dom.activeEffect.textContent = `Production ×${format(state.boostMultiplier)} · ${Math.ceil((state.boostUntil - nowValue) / 1000)} s`;
     else dom.activeEffect.textContent = "Aucun";
-    dom.unlockedCount.textContent = `${unlocked.length}/${Model.WORKSHOPS.length}`;
+    dom.unlockedCount.textContent = `${unlocked.length}/${accessibleWorkshops().length}`;
     dom.unlockedSkills.innerHTML = unlocked.length
       ? unlocked.map(workshop => `<span class="skill-mini">${Engine.SKILLS[workshop.id]}</span>`).join("")
       : '<span class="empty-chip">Achète un atelier</span>';
 
     renderEvent(nowValue);
     renderQuestionTimer();
+    renderSpecialityState();
+    showSpecialityReveal();
   }
 
   function frame(timestamp) {
@@ -1807,6 +1899,11 @@
   dom.cycleTabShortcut.addEventListener("click", () => setActiveTab("network"));
   dom.calibrationOpenUpgrades.addEventListener("click", openCalibrationDialog);
   dom.calibrationClose.addEventListener("click", () => dom.calibrationDialog.close());
+  dom.specialityGateButton.addEventListener("click", () => {
+    if (!dom.specialityDialog.open) dom.specialityDialog.showModal();
+  });
+  dom.specialityClose.addEventListener("click", () => dom.specialityDialog.close());
+  dom.specialityUnlock.addEventListener("click", () => buyCalibrationUpgrade("specialityAccess"));
   dom.protocolViewButtons.forEach(button => button.addEventListener("click", () => setCalibrationView(button.dataset.protocolView)));
   dom.eventClose.addEventListener("click", requestSessionExit);
   dom.eventDialog.addEventListener("cancel", event => {
@@ -1871,6 +1968,7 @@
   createWorkshopCards();
   createWorkshopUpgradeCards();
   createCalibrationCards();
+  renderSpecialityState();
   setActiveTab(state.activeTab, { moveToTop: false });
   updateSoundButton();
   document.querySelectorAll(".bulk-button").forEach(button => button.classList.toggle("active", button.dataset.bulk === String(state.bulk)));

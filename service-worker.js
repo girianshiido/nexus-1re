@@ -1,11 +1,11 @@
-const CACHE_NAME = "nexus-laboratoire-v37";
+const CACHE_NAME = "nexus-laboratoire-v38";
 const APP_SHELL = [
   "./index.html",
-  "./styles.css?v=22",
-  "./question-engine.js?v=24",
+  "./styles.css?v=23",
+  "./question-engine.js?v=25",
   "./learning-model.js?v=1",
-  "./game-model.js?v=4",
-  "./app.js?v=22",
+  "./game-model.js?v=5",
+  "./app.js?v=23",
   "./manifest.webmanifest",
   "./assets/favicon-64.png",
   "./assets/apple-touch-icon.png",

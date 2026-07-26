@@ -20,7 +20,7 @@
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon-64.png">
     <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
-    <link rel="stylesheet" href="styles.css?v=22">
+    <link rel="stylesheet" href="styles.css?v=23">
   </head>
   <body>
     <div class="ambient ambient-a"></div>
@@ -29,7 +29,7 @@
     <header class="topbar">
       <a class="brand" href="#jeu" aria-label="NEXUS 1re, accueil">
         <span class="brand-mark" aria-hidden="true">N</span>
-        <span><strong>NEXUS 1re</strong><small>Laboratoire de mathématiques STI2D</small></span>
+        <span><strong>NEXUS 1re</strong><small id="brand-subtitle">Laboratoire de mathématiques STI2D</small></span>
       </a>
       <div class="top-stats" aria-label="Statistiques de la partie">
         <div class="stat main-stat"><span>Flux disponible</span><strong id="flux-value">0</strong></div>
@@ -152,6 +152,15 @@
             </div>
             <button id="calibration-open-upgrades" class="secondary-button" type="button">Protocoles permanents</button>
           </div>
+          <article id="speciality-gate" class="speciality-gate" hidden>
+            <div class="speciality-gate-mark" aria-hidden="true">✦</div>
+            <div>
+              <p class="eyebrow">Transmission inconnue</p>
+              <h2>Un secteur attend son activation</h2>
+              <p>Les douze ateliers ont atteint 100 unités. Une nouvelle partie du programme peut maintenant rejoindre le NEXUS.</p>
+            </div>
+            <button id="speciality-gate-button" class="speciality-gate-button" type="button">Ouvrir pour 200 pts</button>
+          </article>
           <div id="workshop-upgrade-list" class="workshop-upgrade-list"></div>
         </section>
       </section>
@@ -309,6 +318,24 @@
       </div>
     </dialog>
 
+    <dialog id="speciality-dialog" class="speciality-dialog">
+      <div class="dialog-card speciality-dialog-card">
+        <div class="speciality-stars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <button id="speciality-close" class="dialog-close" type="button" aria-label="Fermer">×</button>
+        <div class="speciality-emblem" aria-hidden="true"><span>✦</span></div>
+        <p class="eyebrow">Fréquence inconnue détectée</p>
+        <h2>SECTEUR DE SPÉCIALITÉ</h2>
+        <p>Le réseau initial est stabilisé. Six ateliers plus exigeants peuvent désormais être reliés au laboratoire.</p>
+        <div class="speciality-preview" aria-label="Nouvelles notions">
+          <span>Trigonométrie</span><span>Signaux</span><span>Vecteurs</span>
+          <span>Complexes</span><span>Forme trigonométrique</span><span>Primitives</span>
+        </div>
+        <div class="speciality-price"><small>Activation permanente</small><strong>200 points d'étalonnage</strong></div>
+        <button id="speciality-unlock" class="primary-button full-button" type="button">Déployer le nouveau secteur</button>
+        <small class="speciality-note">Le secteur traite uniquement les mathématiques de la spécialité physique-chimie et mathématiques.</small>
+      </div>
+    </dialog>
+
     <dialog id="confirm-dialog">
       <form method="dialog" class="dialog-card compact-dialog">
         <p class="eyebrow" id="confirm-kicker">Confirmation</p>
@@ -323,9 +350,9 @@
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-    <script src="question-engine.js?v=24"></script>
+    <script src="question-engine.js?v=25"></script>
     <script src="learning-model.js?v=1"></script>
-    <script src="game-model.js?v=4"></script>
-    <script src="app.js?v=22"></script>
+    <script src="game-model.js?v=5"></script>
+    <script src="app.js?v=23"></script>
   </body>
 </html>

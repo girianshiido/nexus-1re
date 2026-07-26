@@ -17,7 +17,13 @@
     derivatives: "Dérivation",
     statistics: "Statistiques",
     probability: "Probabilités",
-    algorithmics: "Algorithmique"
+    algorithmics: "Algorithmique",
+    trigonometry: "Trigonométrie",
+    sinusoids: "Signaux sinusoïdaux",
+    vectors: "Produit scalaire",
+    complexAlgebra: "Nombres complexes",
+    complexTrig: "Forme trigonométrique",
+    advancedAnalysis: "Analyse approfondie"
   };
 
   function randInt(min, max, rng = Math.random) {
@@ -184,6 +190,13 @@
   function linearFactor(constant) {
     if (constant === 0) return "x";
     return `(x ${constant > 0 ? "+" : "−"} ${Math.abs(constant)})`;
+  }
+
+  function complexExpression(real, imaginary) {
+    if (imaginary === 0) return String(real);
+    const imaginaryMagnitude = Math.abs(imaginary) === 1 ? "i" : `${Math.abs(imaginary)}i`;
+    if (real === 0) return imaginary < 0 ? `−${imaginaryMagnitude}` : imaginaryMagnitude;
+    return `${real} ${imaginary < 0 ? "−" : "+"} ${imaginaryMagnitude}`;
   }
 
   function fractionCalculation(rng) {
@@ -1747,6 +1760,619 @@
     };
   }
 
+  const ANGLES = [
+    { degrees: 0, radians: "0", cos: "1", sin: "0" },
+    { degrees: 30, radians: "π/6", cos: "√3/2", sin: "1/2" },
+    { degrees: 45, radians: "π/4", cos: "√2/2", sin: "√2/2" },
+    { degrees: 60, radians: "π/3", cos: "1/2", sin: "√3/2" },
+    { degrees: 90, radians: "π/2", cos: "0", sin: "1" },
+    { degrees: 120, radians: "2π/3", cos: "−1/2", sin: "√3/2" },
+    { degrees: 135, radians: "3π/4", cos: "−√2/2", sin: "√2/2" },
+    { degrees: 150, radians: "5π/6", cos: "−√3/2", sin: "1/2" },
+    { degrees: 180, radians: "π", cos: "−1", sin: "0" },
+    { degrees: 270, radians: "3π/2", cos: "0", sin: "−1" }
+  ];
+
+  function angleConversion(rng) {
+    const angle = pick(ANGLES.slice(1, 9), rng);
+    const toRadians = rng() < 0.5;
+    const good = toRadians ? angle.radians : `${angle.degrees}°`;
+    const distractorAngles = shuffle(ANGLES.filter(item => item !== angle && item.degrees > 0), rng).slice(0, 3);
+    const distractors = distractorAngles.map(item => toRadians ? item.radians : `${item.degrees}°`);
+    const { choices, answer } = makeChoices(good, distractors, rng);
+    return {
+      kind: "angle-conversion",
+      skill: "trigonometry",
+      prompt: toRadians ? `Convertir ${angle.degrees}° en radians.` : `Convertir ${angle.radians} radians en degrés.`,
+      choices, answer,
+      explanation: toRadians
+        ? `${angle.degrees}° × π/180 = ${angle.radians}.`
+        : `${angle.radians} × 180/π = ${angle.degrees}°.`
+    };
+  }
+
+  function principalAngle(rng) {
+    const coefficient = pick([-11, -9, -7, -5, 5, 7, 9, 11], rng);
+    const residue = ((coefficient % 4) + 4) % 4;
+    const value = residue === 0 ? "0" : residue === 1 ? "π/2" : residue === 2 ? "π" : "−π/2";
+    const good = value;
+    const { choices, answer } = makeChoices(good, ["π/2", "−π/2", "π", "0"].filter(item => item !== good), rng);
+    return {
+      kind: "principal-angle",
+      skill: "trigonometry",
+      prompt: `Déterminer la mesure principale de l'angle ${coefficient}π/2.`,
+      choices, answer,
+      explanation: `On ajoute ou retranche des multiples de 2π. La mesure obtenue dans ]−π ; π] est ${good}.`
+    };
+  }
+
+  function remarkableTrigValue(rng) {
+    const angle = pick(ANGLES, rng);
+    const askCos = rng() < 0.5;
+    const good = askCos ? angle.cos : angle.sin;
+    const pool = ["−1", "−√3/2", "−√2/2", "−1/2", "0", "1/2", "√2/2", "√3/2", "1"];
+    const { choices, answer } = makeChoices(good, shuffle(pool.filter(value => value !== good), rng).slice(0, 3), rng);
+    return {
+      kind: "remarkable-trig-value",
+      skill: "trigonometry",
+      prompt: `Quelle est la valeur exacte de ${askCos ? "cos" : "sin"}(${angle.radians}) ?`,
+      choices, answer,
+      explanation: `Sur le cercle trigonométrique, ${askCos ? "l'abscisse" : "l'ordonnée"} du point d'angle ${angle.radians} vaut ${good}.`
+    };
+  }
+
+  function associatedAngles(rng) {
+    const angle = pick(ANGLES.slice(1, 4), rng);
+    const family = randInt(0, 3, rng);
+    const prompts = [
+      { expression: `cos(−${angle.radians})`, good: angle.cos, rule: "La fonction cosinus est paire." },
+      { expression: `sin(−${angle.radians})`, good: angle.sin.startsWith("−") ? angle.sin.slice(1) : `−${angle.sin}`, rule: "La fonction sinus est impaire." },
+      { expression: `cos(π − ${angle.radians})`, good: angle.cos.startsWith("−") ? angle.cos.slice(1) : `−${angle.cos}`, rule: "cos(π − x) = −cos(x)." },
+      { expression: `sin(π − ${angle.radians})`, good: angle.sin, rule: "sin(π − x) = sin(x)." }
+    ];
+    const selected = prompts[family];
+    const pool = ["−1", "−√3/2", "−√2/2", "−1/2", "0", "1/2", "√2/2", "√3/2", "1"];
+    const { choices, answer } = makeChoices(selected.good, shuffle(pool.filter(value => value !== selected.good), rng).slice(0, 3), rng);
+    return {
+      kind: "associated-angles",
+      skill: "trigonometry",
+      prompt: `Calculer exactement ${selected.expression}.`,
+      choices, answer,
+      explanation: `${selected.rule} On obtient ${selected.good}.`
+    };
+  }
+
+  function trigEquation(rng) {
+    const askCos = rng() < 0.5;
+    const positive = rng() < 0.5;
+    const good = askCos
+      ? positive ? "{π/3 ; 5π/3}" : "{2π/3 ; 4π/3}"
+      : positive ? "{π/6 ; 5π/6}" : "{7π/6 ; 11π/6}";
+    const value = positive ? "1/2" : "−1/2";
+    const pool = ["{π/6 ; 5π/6}", "{π/3 ; 5π/3}", "{2π/3 ; 4π/3}", "{7π/6 ; 11π/6}", "{π/2}", "∅"];
+    const { choices, answer } = makeChoices(good, shuffle(pool.filter(item => item !== good), rng).slice(0, 3), rng);
+    return {
+      kind: "trig-equation",
+      skill: "trigonometry",
+      prompt: `Dans [0 ; 2π[, résoudre ${askCos ? "cos" : "sin"}(x) = ${value}.`,
+      choices, answer,
+      explanation: `On lit sur le cercle les angles dont ${askCos ? "l'abscisse" : "l'ordonnée"} vaut ${value} : ${good}.`
+    };
+  }
+
+  function sinusoidAmplitude(rng) {
+    const amplitude = randInt(2, 9, rng);
+    const useSin = rng() < 0.5;
+    const omega = randInt(2, 7, rng);
+    const good = String(amplitude);
+    const { choices, answer } = makeChoices(good, [omega, amplitude * 2, 1 / amplitude], rng);
+    return {
+      kind: "sinusoid-amplitude",
+      skill: "sinusoids",
+      prompt: `Quelle est l'amplitude du signal s(t) = ${amplitude} ${useSin ? "sin" : "cos"}(${omega}t + π/4) ?`,
+      choices, answer,
+      explanation: `Dans A ${useSin ? "sin" : "cos"}(ωt + φ), l'amplitude est |A|. Elle vaut ici ${amplitude}.`
+    };
+  }
+
+  function sinusoidPeriod(rng) {
+    const divisor = pick([2, 3, 4, 5, 6], rng);
+    const useSin = rng() < 0.5;
+    const good = divisor === 2 ? "π" : divisor % 2 === 0 ? `π/${divisor / 2}` : `2π/${divisor}`;
+    const { choices, answer } = makeChoices(good, [`${divisor}π`, `π/${divisor}`, `2π`, `${divisor}/2π`], rng);
+    return {
+      kind: "sinusoid-period",
+      skill: "sinusoids",
+      prompt: `Déterminer la période du signal s(t) = ${useSin ? "sin" : "cos"}(${divisor}t).`,
+      choices, answer,
+      explanation: `La période vaut T = 2π/ω = 2π/${divisor} = ${good}.`
+    };
+  }
+
+  function frequencyPeriod(rng) {
+    const frequency = pick([2, 4, 5, 10, 20, 25, 50], rng);
+    const askFrequency = rng() < 0.5;
+    const period = 1 / frequency;
+    const good = askFrequency ? `${frequency} Hz` : `${formatNumber(period, 3)} s`;
+    const { choices, answer } = makeChoices(good, askFrequency
+      ? [`${frequency * 2} Hz`, `${formatNumber(period, 3)} Hz`, `${frequency / 2} Hz`]
+      : [`${formatNumber(period * 2, 3)} s`, `${frequency} s`, `${formatNumber(1 / (frequency * 2), 3)} s`], rng);
+    return {
+      kind: "frequency-period",
+      skill: "sinusoids",
+      prompt: askFrequency
+        ? `Un signal périodique a une période T = ${formatNumber(period, 3)} s. Quelle est sa fréquence ?`
+        : `Un signal a une fréquence f = ${frequency} Hz. Quelle est sa période ?`,
+      choices, answer,
+      explanation: `La relation f = 1/T donne ${askFrequency ? `f = ${frequency} Hz` : `T = ${formatNumber(period, 3)} s`}.`
+    };
+  }
+
+  function sinusoidPhase(rng) {
+    const phase = pick(["π/6", "π/4", "π/3", "π/2", "−π/4"], rng);
+    const amplitude = randInt(2, 7, rng);
+    const omega = randInt(2, 6, rng);
+    const good = phase;
+    const { choices, answer } = makeChoices(good, [String(amplitude), String(omega), phase.startsWith("−") ? phase.slice(1) : `−${phase}`], rng);
+    return {
+      kind: "sinusoid-phase",
+      skill: "sinusoids",
+      prompt: `Dans s(t) = ${amplitude} cos(${omega}t ${phase.startsWith("−") ? "−" : "+"} ${phase.replace("−", "")}), quelle est la phase à l'origine ?`,
+      choices, answer,
+      explanation: `Dans A cos(ωt + φ), la phase à l'origine est φ. Elle vaut ici ${phase}.`
+    };
+  }
+
+  function sinusoidValue(rng) {
+    const amplitude = randInt(2, 8, rng);
+    const useSin = rng() < 0.5;
+    const argument = pick(useSin ? ["0", "π/2", "π", "3π/2"] : ["0", "π/2", "π", "3π/2"], rng);
+    const values = useSin ? { "0": 0, "π/2": 1, "π": 0, "3π/2": -1 } : { "0": 1, "π/2": 0, "π": -1, "3π/2": 0 };
+    const good = String(amplitude * values[argument]);
+    const { choices, answer } = makeChoices(good, [amplitude, -amplitude, 0, amplitude * 2], rng);
+    return {
+      kind: "sinusoid-value",
+      skill: "sinusoids",
+      prompt: `Calculer s(${argument}) pour s(t) = ${amplitude} ${useSin ? "sin" : "cos"}(t).`,
+      choices, answer,
+      explanation: `${useSin ? "sin" : "cos"}(${argument}) = ${values[argument]}, donc s(${argument}) = ${good}.`
+    };
+  }
+
+  function dotProductCoordinates(rng) {
+    const ux = randInt(-5, 5, rng) || 1;
+    const uy = randInt(-5, 5, rng) || 2;
+    const vx = randInt(-5, 5, rng) || -1;
+    const vy = randInt(-5, 5, rng) || 3;
+    const good = ux * vx + uy * vy;
+    const { choices, answer } = makeChoices(good, [ux * vx - uy * vy, ux + vx + uy + vy, ux * vy + uy * vx], rng);
+    return {
+      kind: "dot-product-coordinates",
+      skill: "vectors",
+      prompt: `Dans un repère orthonormé, u = (${ux} ; ${uy}) et v = (${vx} ; ${vy}). Calculer u · v.`,
+      choices, answer,
+      explanation: `u · v = ${ux} × (${vx}) + ${uy} × (${vy}) = ${good}.`
+    };
+  }
+
+  function vectorNorm(rng) {
+    const triple = pick([[3, 4, 5], [5, 12, 13], [6, 8, 10], [8, 15, 17]], rng);
+    const signs = [rng() < 0.5 ? -1 : 1, rng() < 0.5 ? -1 : 1];
+    const x = triple[0] * signs[0];
+    const y = triple[1] * signs[1];
+    const good = String(triple[2]);
+    const { choices, answer } = makeChoices(good, [triple[0] + triple[1], triple[2] ** 2, Math.abs(triple[1] - triple[0])], rng);
+    return {
+      kind: "vector-norm",
+      skill: "vectors",
+      prompt: `Calculer la norme du vecteur u = (${x} ; ${y}).`,
+      choices, answer,
+      explanation: `||u|| = √(${x}² + ${y}²) = √${triple[2] ** 2} = ${good}.`
+    };
+  }
+
+  function vectorOrthogonality(rng) {
+    const a = randInt(2, 6, rng);
+    const b = randInt(1, 5, rng);
+    const good = `(${b} ; ${-a})`;
+    const { choices, answer } = makeChoices(good, [`(${b} ; ${a})`, `(${a} ; ${-b})`, `(${-b} ; ${-a})`], rng);
+    return {
+      kind: "vector-orthogonality",
+      skill: "vectors",
+      prompt: `Le vecteur u = (${a} ; ${b}). Quel vecteur proposé lui est orthogonal ?`,
+      choices, answer,
+      explanation: `Avec v = ${good}, u · v = ${a} × ${b} + ${b} × (${-a}) = 0 : les vecteurs sont orthogonaux.`
+    };
+  }
+
+  function dotProductAngle(rng) {
+    const normU = randInt(2, 7, rng);
+    const normV = randInt(2, 7, rng);
+    const angle = pick([0, 60, 90, 120, 180], rng);
+    const cosines = { 0: 1, 60: 0.5, 90: 0, 120: -0.5, 180: -1 };
+    const good = normU * normV * cosines[angle];
+    const { choices, answer } = makeChoices(good, [normU * normV, normU + normV, -good, 0], rng);
+    return {
+      kind: "dot-product-angle",
+      skill: "vectors",
+      prompt: `On a ||u|| = ${normU}, ||v|| = ${normV} et l'angle (u, v) vaut ${angle}°. Calculer u · v.`,
+      choices, answer,
+      explanation: `u · v = ||u|| ||v|| cos(${angle}°) = ${normU} × ${normV} × ${cosines[angle]} = ${good}.`
+    };
+  }
+
+  function alKashi(rng) {
+    const sides = pick([[3, 4, 60], [4, 6, 60], [5, 7, 120], [6, 8, 90]], rng);
+    const [a, b, angle] = sides;
+    const cosines = { 60: 0.5, 90: 0, 120: -0.5 };
+    const squared = a * a + b * b - 2 * a * b * cosines[angle];
+    const good = `√${squared}`;
+    const { choices, answer } = makeChoices(good, [`√${a * a + b * b}`, `√${a * a + b * b + 2 * a * b * cosines[angle]}`, String(a + b)], rng);
+    return {
+      kind: "al-kashi",
+      skill: "vectors",
+      prompt: `Dans un triangle, deux côtés mesurent ${a} et ${b}, et l'angle compris vaut ${angle}°. Quelle est la longueur du troisième côté ?`,
+      choices, answer,
+      explanation: `Al-Kashi donne c² = ${a}² + ${b}² − 2 × ${a} × ${b} × cos(${angle}°) = ${squared}, donc c = ${good}.`
+    };
+  }
+
+  function complexParts(rng) {
+    const a = randInt(-8, 8, rng);
+    const b = randInt(-8, 8, rng) || 1;
+    const askReal = rng() < 0.5;
+    const good = String(askReal ? a : b);
+    const expression = complexExpression(a, b);
+    const { choices, answer } = makeChoices(good, [askReal ? b : a, -Number(good), Math.abs(Number(good)) + 1], rng);
+    return {
+      kind: "complex-parts",
+      skill: "complexAlgebra",
+      prompt: `Soit z = ${expression}. Quelle est sa partie ${askReal ? "réelle" : "imaginaire"} ?`,
+      choices, answer,
+      explanation: `Dans z = a + bi, Re(z) = a et Im(z) = b. La réponse est ${good}.`
+    };
+  }
+
+  function complexConjugate(rng) {
+    const a = randInt(-7, 7, rng);
+    const b = randInt(-7, 7, rng) || 2;
+    const expression = complexExpression(a, b);
+    const good = complexExpression(a, -b);
+    const { choices, answer } = makeChoices(good, [expression, complexExpression(-a, b), complexExpression(-a, -b)], rng);
+    return {
+      kind: "complex-conjugate",
+      skill: "complexAlgebra",
+      prompt: `Déterminer le conjugué de z = ${expression}.`,
+      choices, answer,
+      explanation: `Le conjugué conserve la partie réelle et change le signe de la partie imaginaire : z̄ = ${good}.`
+    };
+  }
+
+  function complexModulus(rng) {
+    const triple = pick([[3, 4, 5], [5, 12, 13], [6, 8, 10], [8, 15, 17]], rng);
+    const a = triple[0] * (rng() < 0.5 ? -1 : 1);
+    const b = triple[1] * (rng() < 0.5 ? -1 : 1);
+    const good = String(triple[2]);
+    const { choices, answer } = makeChoices(good, [triple[2] ** 2, Math.abs(a + b), Math.abs(a - b)], rng);
+    return {
+      kind: "complex-modulus",
+      skill: "complexAlgebra",
+      prompt: `Calculer le module de z = ${complexExpression(a, b)}.`,
+      choices, answer,
+      explanation: `|z| = √(${a}² + ${b}²) = ${good}.`
+    };
+  }
+
+  function complexSum(rng) {
+    const a = randInt(-6, 6, rng);
+    const b = randInt(-6, 6, rng);
+    const c = randInt(-6, 6, rng);
+    const d = randInt(-6, 6, rng);
+    const real = a + c;
+    const imaginary = b + d;
+    const write = complexExpression;
+    const good = write(real, imaginary);
+    const { choices, answer } = makeChoices(good, [write(a - c, b - d), write(real, b - d), write(a * c, b * d)], rng);
+    return {
+      kind: "complex-sum",
+      skill: "complexAlgebra",
+      prompt: `Calculer (${write(a, b)}) + (${write(c, d)}).`,
+      choices, answer,
+      explanation: `On additionne séparément les parties réelles et imaginaires : ${good}.`
+    };
+  }
+
+  function complexProduct(rng) {
+    const a = randInt(-4, 4, rng) || 1;
+    const b = randInt(-4, 4, rng) || 2;
+    const c = randInt(-4, 4, rng) || -1;
+    const d = randInt(-4, 4, rng) || 3;
+    const real = a * c - b * d;
+    const imaginary = a * d + b * c;
+    const write = complexExpression;
+    const good = write(real, imaginary);
+    const { choices, answer } = makeChoices(good, [write(a * c + b * d, imaginary), write(a * c, b * d), write(real, a * d - b * c)], rng);
+    return {
+      kind: "complex-product",
+      skill: "complexAlgebra",
+      prompt: `Calculer (${write(a, b)})(${write(c, d)}).`,
+      choices, answer,
+      explanation: `Avec i² = −1, la partie réelle vaut ac − bd et la partie imaginaire ad + bc : ${good}.`
+    };
+  }
+
+  function complexQuotient(rng) {
+    const quotient = pick([[1, 1], [2, -1], [-1, 2], [3, 1]], rng);
+    const divisor = pick([[1, 1], [1, -1], [2, 1], [1, 2]], rng);
+    const [qReal, qImaginary] = quotient;
+    const [dReal, dImaginary] = divisor;
+    const numeratorReal = qReal * dReal - qImaginary * dImaginary;
+    const numeratorImaginary = qReal * dImaginary + qImaginary * dReal;
+    const write = complexExpression;
+    const good = write(qReal, qImaginary);
+    const { choices, answer } = makeChoices(good, [write(qReal, -qImaginary), write(numeratorReal, numeratorImaginary), write(dReal, dImaginary)], rng);
+    return {
+      kind: "complex-quotient",
+      skill: "complexAlgebra",
+      prompt: `Calculer (${write(numeratorReal, numeratorImaginary)}) / (${write(dReal, dImaginary)}).`,
+      choices, answer,
+      explanation: `On multiplie par le conjugué du dénominateur et on simplifie. Le quotient vaut ${good}.`
+    };
+  }
+
+  function complexAffix(rng) {
+    const ax = randInt(-5, 5, rng);
+    const ay = randInt(-5, 5, rng);
+    const bx = randInt(-5, 5, rng);
+    const by = randInt(-5, 5, rng);
+    const real = bx - ax;
+    const imaginary = by - ay;
+    const good = complexExpression(real, imaginary);
+    const { choices, answer } = makeChoices(good, [
+      complexExpression(ax + bx, ay + by),
+      complexExpression(-real, imaginary),
+      complexExpression(real, -imaginary)
+    ], rng);
+    return {
+      kind: "complex-affix",
+      skill: "complexAlgebra",
+      prompt: `A a pour affixe ${complexExpression(ax, ay)} et B a pour affixe ${complexExpression(bx, by)}. Quelle est l'affixe du vecteur AB ?`,
+      choices, answer,
+      explanation: `L'affixe de AB est zB − zA = (${bx} − ${ax}) + (${by} − ${ay})i = ${good}.`
+    };
+  }
+
+  function complexArgument(rng) {
+    const cases = [
+      { z: "1", argument: "0" }, { z: "i", argument: "π/2" },
+      { z: "−1", argument: "π" }, { z: "−i", argument: "−π/2" },
+      { z: "1 + i", argument: "π/4" }, { z: "−1 + i", argument: "3π/4" },
+      { z: "−1 − i", argument: "−3π/4" }, { z: "1 − i", argument: "−π/4" }
+    ];
+    const selected = pick(cases, rng);
+    const { choices, answer } = makeChoices(selected.argument, shuffle(cases.filter(item => item !== selected).map(item => item.argument), rng).slice(0, 3), rng);
+    return {
+      kind: "complex-argument",
+      skill: "complexTrig",
+      prompt: `Donner un argument principal du nombre complexe z = ${selected.z}.`,
+      choices, answer,
+      explanation: `Le point d'affixe ${selected.z} est situé sur la demi-droite d'angle ${selected.argument}.`
+    };
+  }
+
+  function trigComplexForm(rng) {
+    const cases = [
+      { z: "2", rho: "2", theta: "0" },
+      { z: "2i", rho: "2", theta: "π/2" },
+      { z: "−3", rho: "3", theta: "π" },
+      { z: "−4i", rho: "4", theta: "−π/2" },
+      { z: "1 + i", rho: "√2", theta: "π/4" },
+      { z: "−1 + i", rho: "√2", theta: "3π/4" }
+    ];
+    const selected = pick(cases, rng);
+    const good = `${selected.rho}(cos(${selected.theta}) + sin(${selected.theta})i)`;
+    const wrongAngle = selected.theta === "π/4" ? "−π/4" : "π/4";
+    const { choices, answer } = makeChoices(good, [
+      `${selected.rho}(cos(${wrongAngle}) + sin(${wrongAngle})i)`,
+      `1(cos(${selected.theta}) + sin(${selected.theta})i)`,
+      `${selected.rho}(sin(${selected.theta}) + cos(${selected.theta})i)`
+    ], rng);
+    return {
+      kind: "complex-trig-form",
+      skill: "complexTrig",
+      prompt: `Écrire z = ${selected.z} sous la forme ρ(cos(θ) + sin(θ)i).`,
+      choices, answer,
+      explanation: `On a |z| = ${selected.rho} et un argument θ = ${selected.theta}. Ainsi z = ${good}.`
+    };
+  }
+
+  function bracketComplexForm(rng) {
+    const cases = [
+      { z: "3", rho: "3", theta: "0" },
+      { z: "−2", rho: "2", theta: "π" },
+      { z: "2i", rho: "2", theta: "π/2" },
+      { z: "−3i", rho: "3", theta: "−π/2" },
+      { z: "1 + i", rho: "√2", theta: "π/4" }
+    ];
+    const selected = pick(cases, rng);
+    const good = `[${selected.rho}, ${selected.theta}]`;
+    const opposite = selected.theta === "0" ? "π" : selected.theta.startsWith("−") ? selected.theta.slice(1) : `−${selected.theta}`;
+    const { choices, answer } = makeChoices(good, [
+      `[${selected.theta}, ${selected.rho}]`,
+      `[1, ${selected.theta}]`,
+      `[${selected.rho}, ${opposite}]`
+    ], rng);
+    return {
+      kind: "complex-bracket-form",
+      skill: "complexTrig",
+      prompt: `Quelle écriture [ρ, θ] représente z = ${selected.z} ?`,
+      choices, answer,
+      explanation: `Le module vaut ${selected.rho} et un argument principal vaut ${selected.theta}, donc z = ${good}.`
+    };
+  }
+
+  function trigToAlgebraic(rng) {
+    const cases = [
+      { rho: 2, theta: "0", z: "2" },
+      { rho: 3, theta: "π/2", z: "3i" },
+      { rho: 4, theta: "π", z: "−4" },
+      { rho: 2, theta: "−π/2", z: "−2i" },
+      { rho: "√2", theta: "π/4", z: "1 + i" }
+    ];
+    const selected = pick(cases, rng);
+    const good = selected.z;
+    const { choices, answer } = makeChoices(good, ["−1 + i", "1 − i", "2 + 2i", "−2i"].filter(value => value !== good), rng);
+    return {
+      kind: "complex-trig-to-algebraic",
+      skill: "complexTrig",
+      prompt: `Donner la forme algébrique de z = ${selected.rho}(cos(${selected.theta}) + sin(${selected.theta})i).`,
+      choices, answer,
+      explanation: `On remplace cos(${selected.theta}) et sin(${selected.theta}) par leurs valeurs exactes. On obtient z = ${good}.`
+    };
+  }
+
+  function complexPolarPoint(rng) {
+    const cases = [
+      { x: 3, y: 0, rho: "3", theta: "0" },
+      { x: 0, y: 4, rho: "4", theta: "π/2" },
+      { x: -2, y: 0, rho: "2", theta: "π" },
+      { x: 1, y: 1, rho: "√2", theta: "π/4" },
+      { x: 1, y: -1, rho: "√2", theta: "−π/4" }
+    ];
+    const selected = pick(cases, rng);
+    const good = `[${selected.rho}, ${selected.theta}]`;
+    const opposite = selected.theta === "0" ? "π" : selected.theta.startsWith("−") ? selected.theta.slice(1) : `−${selected.theta}`;
+    const { choices, answer } = makeChoices(good, [`[${selected.rho}, ${opposite}]`, `[${selected.theta}, ${selected.rho}]`, `[1, ${selected.theta}]`], rng);
+    return {
+      kind: "complex-polar-point",
+      skill: "complexTrig",
+      prompt: `Le point M a pour coordonnées (${selected.x} ; ${selected.y}). Quelle est l'écriture [ρ, θ] de son affixe ?`,
+      choices, answer,
+      explanation: `La distance OM vaut ${selected.rho} et l'angle polaire vaut ${selected.theta}. L'affixe s'écrit ${good}.`
+    };
+  }
+
+  function productDerivative(rng) {
+    const a = randInt(2, 7, rng);
+    const b = randInt(2, 6, rng);
+    const c = randInt(2, 5, rng);
+    const good = `${3 * a}x² + ${2 * b}x + ${c}`;
+    const { choices, answer } = makeChoices(good, [`${a}x² + ${b}x + ${c}`, `${3 * a}x² + ${b}x`, `${2 * a}x + ${b + c}`], rng);
+    return {
+      kind: "product-derivative",
+      skill: "advancedAnalysis",
+      prompt: `Dériver f(x) = x(${a}x² + ${b}x + ${c}).`,
+      choices, answer,
+      explanation: `Après développement, f(x) = ${a}x³ + ${b}x² + ${c}x, donc f′(x) = ${good}.`
+    };
+  }
+
+  function inverseDerivative(rng) {
+    const a = randInt(2, 8, rng);
+    const b = randInt(-6, 6, rng);
+    const denominator = affineExpression(a, b);
+    const good = `−${a}/(${denominator})²`;
+    const { choices, answer } = makeChoices(good, [`${a}/(${denominator})²`, `−1/(${denominator})²`, `${a}/(${denominator})`], rng);
+    return {
+      kind: "inverse-derivative",
+      skill: "advancedAnalysis",
+      prompt: `Dériver f(x) = 1/(${denominator}) sur son ensemble de définition.`,
+      choices, answer,
+      explanation: `Pour u(x) = ${denominator}, (1/u)′ = −u′/u² et u′ = ${a}. Donc f′(x) = ${good}.`
+    };
+  }
+
+  function sinusoidDerivative(rng) {
+    const a = randInt(2, 7, rng);
+    const omega = randInt(2, 6, rng);
+    const useSin = rng() < 0.5;
+    const coefficient = a * omega;
+    const good = useSin ? `${coefficient} cos(${omega}x)` : `−${coefficient} sin(${omega}x)`;
+    const { choices, answer } = makeChoices(good, [
+      useSin ? `${a} cos(${omega}x)` : `−${a} sin(${omega}x)`,
+      useSin ? `−${coefficient} cos(${omega}x)` : `${coefficient} sin(${omega}x)`,
+      useSin ? `${coefficient} sin(${omega}x)` : `${coefficient} cos(${omega}x)`
+    ], rng);
+    return {
+      kind: "sinusoid-derivative",
+      skill: "advancedAnalysis",
+      prompt: `Dériver f(x) = ${a} ${useSin ? "sin" : "cos"}(${omega}x).`,
+      choices, answer,
+      explanation: `${useSin ? "(sin(u))′ = u′ cos(u)" : "(cos(u))′ = −u′ sin(u)"} avec u′ = ${omega}. Donc f′(x) = ${good}.`
+    };
+  }
+
+  function affineApproximation(rng) {
+    const a = pick([1, 4, 9, 16, 25], rng);
+    const delta = pick([0.01, -0.01, 0.04, -0.04], rng);
+    const root = Math.sqrt(a);
+    const goodValue = root + delta / (2 * root);
+    const good = formatNumber(goodValue, 4);
+    const { choices, answer } = makeChoices(good, [formatNumber(root + delta, 4), formatNumber(root - delta / (2 * root), 4), formatNumber(root, 4)], rng);
+    return {
+      kind: "affine-approximation",
+      skill: "advancedAnalysis",
+      prompt: `À l'aide de l'approximation affine de √x au voisinage de ${a}, estimer √${formatNumber(a + delta, 2)}.`,
+      choices, answer,
+      explanation: `Pour f(x) = √x, f′(${a}) = 1/${2 * root}. Ainsi f(${a} + h) ≈ ${root} + h/${2 * root} = ${good}.`
+    };
+  }
+
+  function polynomialPrimitive(rng) {
+    const a = randInt(2, 6, rng) * 3;
+    const b = randInt(2, 6, rng) * 2;
+    const c = pick([-5, -4, -3, -2, 2, 3, 4, 5], rng);
+    const good = `${a / 3}x³ + ${b / 2}x² ${c >= 0 ? "+" : "−"} ${Math.abs(c)}x`;
+    const { choices, answer } = makeChoices(good, [
+      `${3 * a}x³ + ${2 * b}x² ${c >= 0 ? "+" : "−"} ${Math.abs(c)}x`,
+      `${a / 2}x² + ${b}x ${c >= 0 ? "+" : "−"} ${Math.abs(c)}`,
+      `${a / 3}x³ + ${b / 2}x²`
+    ], rng);
+    return {
+      kind: "polynomial-primitive",
+      skill: "advancedAnalysis",
+      prompt: `Donner une primitive de f(x) = ${a}x² + ${b}x ${c >= 0 ? "+" : "−"} ${Math.abs(c)}.`,
+      choices, answer,
+      explanation: `On augmente chaque exposant de 1 et on divise par ce nouvel exposant. Une primitive est ${good}.`
+    };
+  }
+
+  function sinusoidPrimitive(rng) {
+    const omega = randInt(2, 7, rng);
+    const coefficient = randInt(1, 5, rng) * omega;
+    const useCos = rng() < 0.5;
+    const simplified = coefficient / omega;
+    const good = useCos ? `${simplified} sin(${omega}x)` : `−${simplified} cos(${omega}x)`;
+    const { choices, answer } = makeChoices(good, [
+      useCos ? `${coefficient} sin(${omega}x)` : `−${coefficient} cos(${omega}x)`,
+      useCos ? `−${simplified} sin(${omega}x)` : `${simplified} cos(${omega}x)`,
+      useCos ? `${simplified} cos(${omega}x)` : `${simplified} sin(${omega}x)`
+    ], rng);
+    return {
+      kind: "sinusoid-primitive",
+      skill: "advancedAnalysis",
+      prompt: `Donner une primitive de f(x) = ${coefficient} ${useCos ? "cos" : "sin"}(${omega}x).`,
+      choices, answer,
+      explanation: `${useCos ? "Une primitive de cos(ωx) est sin(ωx)/ω" : "Une primitive de sin(ωx) est −cos(ωx)/ω"}. On obtient ${good}.`
+    };
+  }
+
+  function eulerStep(rng) {
+    const x0 = randInt(0, 4, rng);
+    const y0 = randInt(1, 8, rng);
+    const step = pick([0.1, 0.2, 0.5], rng);
+    const slope = x0 + y0;
+    const good = formatNumber(y0 + step * slope, 2);
+    const { choices, answer } = makeChoices(good, [formatNumber(y0 + slope, 2), formatNumber(y0 + step, 2), formatNumber(y0 - step * slope, 2)], rng);
+    return {
+      kind: "euler-step",
+      skill: "advancedAnalysis",
+      prompt: `Pour y′ = x + y, on connaît y(${x0}) = ${y0}. Avec un pas h = ${formatNumber(step)}, quelle valeur la méthode d'Euler donne-t-elle au point suivant ?`,
+      choices, answer,
+      explanation: `y suivant ≈ y₀ + h × f(x₀, y₀) = ${y0} + ${formatNumber(step)} × (${x0} + ${y0}) = ${good}.`
+    };
+  }
+
   const GENERATORS = {
     energy: [proportionValue, ratioShare, fractionCalculation, operationPriority, scientificNotation, powerRule, percentFinal, percentRate, successiveRates, percentInitial, reciprocalRate, metricConversion, durationConversion, functionImage],
     factory: [zeroProduct, developExpression, slopeFromPoints, nextSequence, derivativePolynomial, setIntersection, logicalCondition, reciprocalStatement, counterexample, factorExpression, linearSign, factorizedSign, graphLineEquation, graphEquationReading, graphSign, quadraticVertex, quadraticRoots, variationTable, explicitSequenceTerm, recurrentSequenceTerm, sequenceNature, sequenceVariation, cubicDerivative, tangentEquation, derivativeVariation],
@@ -1765,7 +2391,13 @@
     derivatives: [derivativePolynomial, cubicDerivative, tangentEquation, derivativeVariation],
     statistics: [meanSeries, histogramReading, meanPoint, affineAdjustment],
     probability: [conditionalProbability, independentEvents, totalProbability, bernoulliRepetition, randomExpectation, randomEvent],
-    algorithmics: [pythonAccumulator, pythonList, pythonFunction, spreadsheetFormula, dataFilter, pythonBernoulli, rawDataCrossTable]
+    algorithmics: [pythonAccumulator, pythonList, pythonFunction, spreadsheetFormula, dataFilter, pythonBernoulli, rawDataCrossTable],
+    trigonometry: [angleConversion, principalAngle, remarkableTrigValue, associatedAngles, trigEquation],
+    sinusoids: [sinusoidAmplitude, sinusoidPeriod, frequencyPeriod, sinusoidPhase, sinusoidValue],
+    vectors: [dotProductCoordinates, vectorNorm, vectorOrthogonality, dotProductAngle, alKashi],
+    complexAlgebra: [complexParts, complexConjugate, complexModulus, complexSum, complexProduct, complexQuotient, complexAffix],
+    complexTrig: [complexArgument, trigComplexForm, bracketComplexForm, trigToAlgebraic, complexPolarPoint],
+    advancedAnalysis: [productDerivative, inverseDerivative, sinusoidDerivative, affineApproximation, polynomialPrimitive, sinusoidPrimitive, eulerStep]
   };
 
   const PROGRAMME_2026 = [
@@ -1841,8 +2473,39 @@
     }
   ];
 
+  const PROGRAMME_SPECIALITE = [
+    {
+      id: "speciality-geometry",
+      title: "Géométrie et trigonométrie",
+      capabilities: [
+        { label: "Radians, cercle trigonométrique et mesure principale", origin: "Spécialité mathématiques STI2D", skills: ["trigonometry"], kinds: ["angle-conversion", "principal-angle"] },
+        { label: "Valeurs remarquables, angles associés et équations trigonométriques", origin: "Spécialité mathématiques STI2D", skills: ["trigonometry"], kinds: ["remarkable-trig-value", "associated-angles", "trig-equation"] },
+        { label: "Amplitude, période, fréquence et phase d'un signal sinusoïdal", origin: "Spécialité mathématiques STI2D", skills: ["sinusoids"], kinds: ["sinusoid-amplitude", "sinusoid-period", "frequency-period", "sinusoid-phase", "sinusoid-value"] },
+        { label: "Produit scalaire, norme, orthogonalité et Al-Kashi", origin: "Spécialité mathématiques STI2D", skills: ["vectors"], kinds: ["dot-product-coordinates", "vector-norm", "vector-orthogonality", "dot-product-angle", "al-kashi"] }
+      ]
+    },
+    {
+      id: "speciality-complex",
+      title: "Nombres complexes",
+      capabilities: [
+        { label: "Parties réelle et imaginaire, conjugué et module", origin: "Spécialité mathématiques STI2D", skills: ["complexAlgebra"], kinds: ["complex-parts", "complex-conjugate", "complex-modulus"] },
+        { label: "Somme, produit, quotient et affixes", origin: "Spécialité mathématiques STI2D", skills: ["complexAlgebra"], kinds: ["complex-sum", "complex-product", "complex-quotient", "complex-affix"] },
+        { label: "Argument et passage entre formes algébrique et trigonométrique", origin: "Spécialité mathématiques STI2D", skills: ["complexTrig"], kinds: ["complex-argument", "complex-trig-form", "complex-bracket-form", "complex-trig-to-algebraic", "complex-polar-point"] }
+      ]
+    },
+    {
+      id: "speciality-analysis",
+      title: "Analyse approfondie",
+      capabilities: [
+        { label: "Dérivées de produits, inverses et fonctions sinusoïdales", origin: "Spécialité mathématiques STI2D", skills: ["advancedAnalysis"], kinds: ["product-derivative", "inverse-derivative", "sinusoid-derivative"] },
+        { label: "Approximation affine et méthode d'Euler", origin: "Spécialité mathématiques STI2D", skills: ["advancedAnalysis"], kinds: ["affine-approximation", "euler-step"] },
+        { label: "Primitives de polynômes et fonctions sinusoïdales", origin: "Spécialité mathématiques STI2D", skills: ["advancedAnalysis"], kinds: ["polynomial-primitive", "sinusoid-primitive"] }
+      ]
+    }
+  ];
+
   const CAPABILITY_BY_KIND = new Map();
-  PROGRAMME_2026.forEach(section => section.capabilities.forEach(capability => {
+  [...PROGRAMME_2026, ...PROGRAMME_SPECIALITE].forEach(section => section.capabilities.forEach(capability => {
     capability.kinds.forEach(kind => {
       if (!CAPABILITY_BY_KIND.has(kind)) {
         CAPABILITY_BY_KIND.set(kind, {
@@ -1940,6 +2603,7 @@
     KIND_GENERATORS,
     SUBSKILLS,
     PROGRAMME_2026,
+    PROGRAMME_SPECIALITE,
     generate,
     generateForSkills,
     generateForKinds,
@@ -1949,6 +2613,7 @@
     validateQuestion,
     affineExpression,
     linearFactor,
+    complexExpression,
     formatNumber
   };
 });

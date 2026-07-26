@@ -254,4 +254,25 @@ for (const capability of capabilities) {
 }
 assert.ok(!JSON.stringify(engine.PROGRAMME_2026).includes("STD2A"), "la géométrie spécifique à STD2A ne doit pas entrer dans les générateurs STI2D");
 
+assert.equal(engine.PROGRAMME_SPECIALITE.length, 3, "la spécialité doit distinguer géométrie, complexes et analyse");
+const specialityCapabilities = engine.PROGRAMME_SPECIALITE.flatMap(section => section.capabilities);
+assert.ok(specialityCapabilities.length >= 10, "la couverture de spécialité doit détailler ses capacités");
+for (const capability of specialityCapabilities) {
+  assert.ok(capability.skills.every(skill => engine.SKILLS[skill]), `${capability.label}: atelier de spécialité inconnu`);
+  assert.ok(capability.kinds.every(kind => generatedKinds.has(kind)), `${capability.label}: format de spécialité non généré`);
+}
+const specialityText = JSON.stringify(engine.PROGRAMME_SPECIALITE);
+assert.doesNotMatch(specialityText, /exponentielle/i, "la forme exponentielle des complexes appartient à la terminale");
+for (const generator of engine.SKILL_GENERATORS.complexTrig) {
+  for (let i = 0; i < 200; i += 1) {
+    const question = generator(Math.random);
+    const text = [question.prompt, ...question.choices, question.explanation].join(" ");
+    assert.doesNotMatch(text, /\b(?:cos|sin)\s+[−π\d]/, `${question.kind}: cos et sin doivent toujours avoir des parenthèses`);
+    assert.doesNotMatch(text, /\b(?:cos|sin)θ/, `${question.kind}: l'argument doit être entre parenthèses`);
+  }
+}
+assert.equal(engine.complexExpression(0, 1), "i", "le coefficient 1 devant i doit être omis");
+assert.equal(engine.complexExpression(0, -1), "−i", "le coefficient -1 devant i doit être un simple signe moins");
+assert.equal(engine.complexExpression(3, 0), "3", "une partie imaginaire nulle doit être omise");
+
 console.log(`${validatedQuestions} questions générées et validées dans ${generatedKinds.size} formats.`);
