@@ -1198,9 +1198,15 @@
     const geometric = rng() < 0.5;
     if (geometric) {
       const ratio = pick([0.5, 0.8, 1.2, 1.5, 2], rng);
-      const good = ratio > 1 ? "Strictement croissante" : "Strictement décroissante";
+      const positiveTerms = rng() < 0.5;
+      const increasing = positiveTerms ? ratio > 1 : ratio < 1;
+      const good = increasing ? "Strictement croissante" : "Strictement décroissante";
       const { choices, answer } = makeChoices(good, [good === "Strictement croissante" ? "Strictement décroissante" : "Strictement croissante", "Constante", "On ne peut pas savoir"], rng);
-      return { kind: "sequence-variation", skill: "sequences", prompt: `Une suite géométrique à termes strictement positifs a pour raison q = ${formatNumber(ratio)}. Quel est son sens de variation ?`, choices, answer, explanation: `Comme q est ${ratio > 1 ? "supérieur" : "compris entre 0 et"} 1, la suite est ${good.toLowerCase()}.` };
+      const sign = positiveTerms ? "positifs" : "négatifs";
+      const explanation = positiveTerms
+        ? `Les termes sont positifs et q est ${ratio > 1 ? "supérieur à 1" : "compris entre 0 et 1"} : la suite est ${good.toLowerCase()}.`
+        : `Les termes sont négatifs et q est ${ratio > 1 ? "supérieur à 1 : ils deviennent plus négatifs" : "compris entre 0 et 1 : ils se rapprochent de 0"} ; la suite est donc ${good.toLowerCase()}.`;
+      return { kind: "sequence-variation", skill: "sequences", prompt: `Une suite géométrique à termes strictement ${sign} a pour raison q = ${formatNumber(ratio)}. Quel est son sens de variation ?`, choices, answer, explanation };
     }
     const reason = pick([-5, -3, 2, 4, 7], rng);
     const good = reason > 0 ? "Strictement croissante" : "Strictement décroissante";
@@ -1706,29 +1712,63 @@
         `=${firstColumn}${row}+${secondColumn}${row}+${thirdColumn}${row}+${fourthColumn}${row}`
       ];
     } else if (family === 4) {
-      const fixedColumn = pick(["H", "I", "J"], rng);
-      const fixedRow = randInt(1, 3, rng);
-      good = `=${firstColumn}${row}*$${fixedColumn}$${fixedRow}`;
-      prompt = `La cellule ${firstColumn}${row} contient un montant et $${fixedColumn}$${fixedRow} un coefficient commun à toutes les lignes. Quelle formule peut être recopiée vers le bas sans déplacer la cellule du coefficient ?`;
-      explanation = `Les signes $ rendent la colonne ${fixedColumn} et la ligne ${fixedRow} absolues, tandis que ${firstColumn}${row} reste relative : ${good}.`;
-      distractors = [
-        `=${firstColumn}${row}*${fixedColumn}${fixedRow}`,
-        `=$${firstColumn}$${row}*${fixedColumn}${fixedRow}`,
-        `=$${firstColumn}${row}*${fixedColumn}$${fixedRow}`
-      ];
+      const nextRow = row + 1;
+      const arithmetic = rng() < 0.5;
+      if (arithmetic) {
+        const reason = pick([-5, -4, -3, -2, 2, 3, 4, 5], rng);
+        const operation = reason > 0 ? `+${reason}` : `-${Math.abs(reason)}`;
+        const oppositeOperation = reason > 0 ? `-${reason}` : `+${Math.abs(reason)}`;
+        good = `=${firstColumn}${row}${operation}`;
+        prompt = `Dans la colonne ${firstColumn}, chaque ligne contient un terme d'une suite arithmétique de raison ${reason}. La cellule ${firstColumn}${row} contient un terme. Quelle formule saisie en ${firstColumn}${nextRow} calcule le terme suivant ?`;
+        explanation = `Dans une suite arithmétique, on ajoute la raison au terme précédent : ${good}.`;
+        distractors = [
+          `=${firstColumn}${row}${oppositeOperation}`,
+          `=${firstColumn}${row}*${Math.abs(reason)}`,
+          `=${firstColumn}${nextRow}${operation}`
+        ];
+      } else {
+        const reason = randInt(2, 5, rng);
+        good = `=${firstColumn}${row}*${reason}`;
+        prompt = `Dans la colonne ${firstColumn}, chaque ligne contient un terme d'une suite géométrique de raison ${reason}. La cellule ${firstColumn}${row} contient un terme. Quelle formule saisie en ${firstColumn}${nextRow} calcule le terme suivant ?`;
+        explanation = `Dans une suite géométrique, on multiplie le terme précédent par la raison : ${good}.`;
+        distractors = [
+          `=${firstColumn}${row}+${reason}`,
+          `=${firstColumn}${row}/${reason}`,
+          `=${firstColumn}${nextRow}*${reason}`
+        ];
+      }
     } else if (family === 5) {
-      const sourceRow = randInt(2, 5, rng);
-      const targetRow = sourceRow + randInt(2, 6, rng);
-      const fixedColumn = pick(["H", "I", "J"], rng);
-      const fixedRow = randInt(1, 3, rng);
-      good = `=${firstColumn}${targetRow}*$${fixedColumn}$${fixedRow}`;
-      prompt = `La formule =${firstColumn}${sourceRow}*$${fixedColumn}$${fixedRow} est recopiée de la ligne ${sourceRow} à la ligne ${targetRow}. Quelle formule obtient-on ?`;
-      explanation = `${firstColumn}${sourceRow} est une référence relative et devient ${firstColumn}${targetRow}. La référence $${fixedColumn}$${fixedRow} reste fixe : ${good}.`;
-      distractors = [
-        `=${firstColumn}${sourceRow}*$${fixedColumn}$${fixedRow}`,
-        `=$${firstColumn}$${sourceRow}*${fixedColumn}${targetRow}`,
-        `=${firstColumn}${targetRow}*${fixedColumn}${targetRow}`
-      ];
+      const threshold = randInt(20, 80, rng);
+      const filterMode = randInt(0, 2, rng);
+      if (filterMode === 0) {
+        good = `=${firstColumn}${row}>=${threshold}`;
+        prompt = `On veut conserver les lignes dont la valeur en colonne ${firstColumn} est supérieure ou égale à ${threshold}. Quelle formule renvoie VRAI exactement pour les lignes à conserver ?`;
+        explanation = `Le critère « supérieure ou égale à ${threshold} » s'écrit >= ${threshold} : ${good}.`;
+        distractors = [
+          `=${firstColumn}${row}>${threshold}`,
+          `=${firstColumn}${row}<=${threshold}`,
+          `=${firstColumn}${row}<${threshold}`
+        ];
+      } else if (filterMode === 1) {
+        good = `=${firstColumn}${row}<${threshold}`;
+        prompt = `On veut conserver les lignes dont la valeur en colonne ${firstColumn} est strictement inférieure à ${threshold}. Quelle formule renvoie VRAI exactement pour les lignes à conserver ?`;
+        explanation = `Le critère « strictement inférieure à ${threshold} » s'écrit < ${threshold} : ${good}.`;
+        distractors = [
+          `=${firstColumn}${row}<=${threshold}`,
+          `=${firstColumn}${row}>=${threshold}`,
+          `=${firstColumn}${row}>${threshold}`
+        ];
+      } else {
+        const upper = threshold + randInt(5, 20, rng);
+        good = `=ET(${firstColumn}${row}>=${threshold};${firstColumn}${row}<=${upper})`;
+        prompt = `On veut conserver les lignes dont la valeur en colonne ${firstColumn} est comprise entre ${threshold} et ${upper}, bornes incluses. Quelle formule renvoie VRAI exactement pour les lignes à conserver ?`;
+        explanation = `La valeur doit vérifier simultanément les deux bornes, d'où la fonction ET : ${good}.`;
+        distractors = [
+          `=OU(${firstColumn}${row}>=${threshold};${firstColumn}${row}<=${upper})`,
+          `=ET(${firstColumn}${row}<=${threshold};${firstColumn}${row}>=${upper})`,
+          `=${firstColumn}${row}>=${threshold}`
+        ];
+      }
     } else {
       good = `=(${secondColumn}${row}-${firstColumn}${row})/${firstColumn}${row}`;
       prompt = `La cellule ${firstColumn}${row} contient une valeur initiale et ${secondColumn}${row} la valeur finale. Quelle formule calcule le taux d'évolution ?`;

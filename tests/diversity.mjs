@@ -84,22 +84,50 @@ assert.ok(
 );
 assert.deepEqual(
   [...new Set(spreadsheets.map(question => {
-    if (/est recopiée/.test(question.prompt)) return "copy";
-    if (/coefficient commun/.test(question.prompt)) return "absolute-reference";
+    if (/terme suivant/.test(question.prompt)) return "sequence";
+    if (/renvoie VRAI/.test(question.prompt)) return "filter";
     if (/deux produits/.test(question.prompt)) return "two-products";
     if (/taux d'évolution/.test(question.prompt)) return "evolution-rate";
     if (/valeur finale/.test(question.prompt)) return "percentage";
     if (/toutes les cellules/.test(question.prompt)) return "aggregate";
     return "row-operation";
   }))].sort(),
-  ["absolute-reference", "aggregate", "copy", "evolution-rate", "percentage", "row-operation", "two-products"],
+  ["aggregate", "evolution-rate", "filter", "percentage", "row-operation", "sequence", "two-products"],
   "les formules de tableur doivent couvrir sept raisonnements différents"
+);
+const spreadsheetSequences = spreadsheets.filter(question => /terme suivant/.test(question.prompt));
+assert.deepEqual(
+  [...new Set(spreadsheetSequences.map(question => /arithmétique/.test(question.prompt) ? "arithmetic" : "geometric"))].sort(),
+  ["arithmetic", "geometric"],
+  "le tableur doit traiter les suites arithmétiques et géométriques"
+);
+const spreadsheetFilters = spreadsheets.filter(question => /renvoie VRAI/.test(question.prompt));
+assert.deepEqual(
+  [...new Set(spreadsheetFilters.map(question => {
+    if (/comprise entre/.test(question.prompt)) return "between";
+    if (/strictement inférieure/.test(question.prompt)) return "below";
+    return "above";
+  }))].sort(),
+  ["above", "below", "between"],
+  "les critères de filtre doivent couvrir une borne basse, une borne haute et un intervalle"
 );
 const rowOperations = spreadsheets.filter(question => /Quelle formule calcule (?:le|la) /.test(question.prompt) && /à la ligne/.test(question.prompt));
 assert.deepEqual(
   [...new Set(rowOperations.map(correctAnswer).map(answer => answer.match(/[+*/-]/)?.[0]))].sort(),
   ["*", "+", "-", "/"],
   "la lecture d'une ligne doit varier entre produit, somme, différence et quotient"
+);
+
+const sequenceVariations = sample("sequence-variation");
+const geometricVariations = sequenceVariations.filter(question => /suite géométrique/.test(question.prompt));
+assert.deepEqual(
+  [...new Set(geometricVariations.map(question => {
+    const sign = /strictement négatifs/.test(question.prompt) ? "negative" : "positive";
+    const direction = correctAnswer(question) === "Strictement croissante" ? "increasing" : "decreasing";
+    return `${sign}-${direction}`;
+  }))].sort(),
+  ["negative-decreasing", "negative-increasing", "positive-decreasing", "positive-increasing"],
+  "les suites géométriques doivent couvrir les deux signes et les deux sens de variation"
 );
 
 const filters = expectVariety("data-filter", 6, 500);
