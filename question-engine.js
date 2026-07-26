@@ -2464,18 +2464,24 @@
   }
 
   function eulerStep(rng) {
-    const x0 = randInt(0, 4, rng);
+    const family = rng() < 0.5 ? "inverse" : "cauchy";
+    const x0 = family === "inverse" ? pick([1, 2, 4, 5], rng) : pick([0, 1, 2, 3], rng);
     const y0 = randInt(1, 8, rng);
     const step = pick([0.1, 0.2, 0.5], rng);
-    const slope = x0 + y0;
+    const slope = family === "inverse" ? 1 / x0 : 1 / (1 + x0 ** 2);
+    const expression = family === "inverse" ? "1/t" : "1/(1 + t²)";
     const good = formatNumber(y0 + step * slope, 2);
-    const { choices, answer } = makeChoices(good, [formatNumber(y0 + slope, 2), formatNumber(y0 + step, 2), formatNumber(y0 - step * slope, 2)], rng);
+    const { choices, answer } = makeChoices(good, [
+      formatNumber(y0 + slope, 2),
+      formatNumber(y0 + step * x0, 2),
+      formatNumber(y0 - step * slope, 2)
+    ], rng);
     return {
       kind: "euler-step",
       skill: "advancedAnalysis",
-      prompt: `Pour y′ = x + y, on connaît y(${x0}) = ${y0}. Avec un pas h = ${formatNumber(step)}, quelle valeur la méthode d'Euler donne-t-elle au point suivant ?`,
+      prompt: `Pour y′ = ${expression}, on connaît y(${x0}) = ${y0}. Avec un pas h = ${formatNumber(step)}, quelle valeur la méthode d'Euler donne-t-elle au point suivant ?`,
       choices, answer,
-      explanation: `y suivant ≈ y₀ + h × f(x₀, y₀) = ${y0} + ${formatNumber(step)} × (${x0} + ${y0}) = ${good}.`
+      explanation: `y(t₀ + h) ≈ y(t₀) + h × f(t₀) = ${y0} + ${formatNumber(step)} × ${formatNumber(slope, 2)} = ${good}.`
     };
   }
 

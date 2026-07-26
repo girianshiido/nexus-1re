@@ -55,7 +55,7 @@ Après son déblocage, un second secteur se fonde sur la partie mathématiques d
 | Complexes | Somme, produit, quotient et affixes | Nombres complexes | Opérations et vecteurs |
 | Complexes | Argument et passages entre formes algébrique et trigonométrique | Forme trigonométrique | Notations `ρ(cos(θ) + sin(θ)i)` et `[ρ, θ]` |
 | Analyse | Dérivées approfondies et fonctions sinusoïdales | Analyse approfondie | Produit, inverse, sinus et cosinus |
-| Analyse | Approximation affine et méthode d'Euler | Analyse approfondie | Estimation locale et pas d'Euler |
+| Analyse | Approximation affine et méthode d'Euler pour `y′ = f(t)` | Analyse approfondie | Estimation locale et approximation d'une primitive, sans dépendance en `y` |
 | Analyse | Primitives de polynômes et fonctions sinusoïdales | Analyse approfondie | Recherche de primitives |
 
 La forme exponentielle et les opérations entre nombres complexes sous forme trigonométrique, placées en terminale, sont volontairement exclues.

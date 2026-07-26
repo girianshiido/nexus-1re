@@ -204,4 +204,19 @@ assert.ok(
   "les suites récurrentes doivent couvrir addition, multiplication et relation affine"
 );
 
+const eulerSteps = sample("euler-step");
+assert.ok(
+  eulerSteps.every(question => /Pour y′ = (?:1\/t|1\/\(1 \+ t²\))/.test(question.prompt)),
+  "la méthode d'Euler doit rester limitée aux équations y′ = f(t) du programme"
+);
+assert.ok(
+  eulerSteps.every(question => !/y′ = [^,]*\by\b/.test(question.prompt)),
+  "le second membre des questions d'Euler ne doit pas dépendre de y"
+);
+assert.deepEqual(
+  [...new Set(eulerSteps.map(question => /y′ = 1\/t,/.test(question.prompt) ? "inverse" : "cauchy"))].sort(),
+  ["cauchy", "inverse"],
+  "les questions d'Euler doivent couvrir les deux familles de primitives proposées"
+);
+
 console.log("La diversité structurelle des générateurs sensibles est validée.");
