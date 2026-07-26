@@ -55,6 +55,9 @@ assert.match(app, /SESSION_STARTED_AT/, "un rattrapage UTC tardif ne doit pas re
 assert.match(app, /Connexion UTC indisponible/, "un gain non vérifié ne doit pas être accordé silencieusement");
 assert.match(html, /id="event-dismiss"/, "une perturbation doit pouvoir être ignorée");
 assert.match(app, /dismissPendingEvent/, "l'action Ignorer doit masquer la perturbation sans lancer de questions");
+assert.match(app, /requestSessionExit/, "fermer un entraînement doit proposer une sortie réelle");
+assert.match(app, /quit-session/, "quitter un entraînement doit nécessiter une confirmation");
+assert.match(app, /abandonLearningSession/, "une session abandonnée ne doit pas reprendre automatiquement");
 assert.match(styles, /\.event-card[^}]*pointer-events:\s*none/, "le bandeau ne doit pas intercepter les clics destinés à l'interface");
 assert.match(styles, /\.event-card button[^}]*pointer-events:\s*auto/, "les actions propres au bandeau doivent rester cliquables");
 assert.match(app, /workshopReveal/, "les ateliers doivent être révélés progressivement");

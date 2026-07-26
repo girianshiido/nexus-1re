@@ -1251,6 +1251,12 @@
       dom.confirmTitle.textContent = "Reconfigurer le laboratoire ?";
       dom.confirmText.textContent = `Tu gagneras ${plural(gain, "point")} d'étalonnage et disposeras alors de ${plural(availableAfter, "point")} à investir. Le flux, les ateliers et leurs améliorations repartiront de zéro. Ta maîtrise, tes protocoles permanents et tes statistiques seront conservés. Le multiplicateur permanent passera à ×${format(Model.permanentMultiplier(state.calibration + gain))}.`;
       dom.confirmAction.textContent = "Lancer le nouveau cycle";
+    } else if (mode === "quit-session") {
+      const isExam = eventRun?.mode === "exam";
+      dom.confirmKicker.textContent = isExam ? "Épreuve en cours" : "Entraînement en cours";
+      dom.confirmTitle.textContent = isExam ? "Quitter l'épreuve ?" : "Quitter l'entraînement ?";
+      dom.confirmText.textContent = "La session ne donnera pas de bilan. Les réponses déjà envoyées restent toutefois prises en compte dans ta progression.";
+      dom.confirmAction.textContent = isExam ? "Quitter l'épreuve" : "Quitter l'entraînement";
     } else {
       dom.confirmKicker.textContent = "Réinitialisation";
       dom.confirmTitle.textContent = "Effacer cette partie ?";
@@ -1258,6 +1264,34 @@
       dom.confirmAction.textContent = "Tout recommencer";
     }
     dom.confirmDialog.showModal();
+  }
+
+  function abandonLearningSession() {
+    const mode = eventRun?.mode;
+    eventRun = null;
+    currentQuestion = null;
+    currentAnswered = false;
+    dom.eventDialog.close();
+    save();
+    renderLearning();
+    showToast(mode === "exam" ? "Épreuve quittée. Tu pourras la recommencer quand tu veux." : "Entraînement quitté. Tu peux choisir un autre parcours.");
+  }
+
+  function requestSessionExit() {
+    if (!eventRun || eventRun.finished) {
+      dom.eventDialog.close();
+      if (eventRun?.finished) {
+        eventRun = null;
+        currentQuestion = null;
+      }
+      return;
+    }
+    if (eventRun.mode === "event") {
+      dom.eventDialog.close();
+      return;
+    }
+    dom.eventDialog.close();
+    showConfirm("quit-session");
   }
 
   function startNewCycle() {
@@ -1774,11 +1808,11 @@
   dom.calibrationOpenUpgrades.addEventListener("click", openCalibrationDialog);
   dom.calibrationClose.addEventListener("click", () => dom.calibrationDialog.close());
   dom.protocolViewButtons.forEach(button => button.addEventListener("click", () => setCalibrationView(button.dataset.protocolView)));
-  dom.eventClose.addEventListener("click", () => {
-    dom.eventDialog.close();
-    if (eventRun?.finished) {
-      eventRun = null;
-      currentQuestion = null;
+  dom.eventClose.addEventListener("click", requestSessionExit);
+  dom.eventDialog.addEventListener("cancel", event => {
+    if (eventRun && !eventRun.finished && eventRun.mode !== "event") {
+      event.preventDefault();
+      requestSessionExit();
     }
   });
   dom.eventNext.addEventListener("click", advanceEvent);
@@ -1796,10 +1830,18 @@
   dom.resetMobileButton.addEventListener("click", () => showConfirm("reset"));
   dom.confirmAction.addEventListener("click", event => {
     event.preventDefault();
-    dom.confirmDialog.close();
-    if (confirmMode === "cycle") startNewCycle();
-    if (confirmMode === "reset") resetGame();
+    const action = confirmMode;
     confirmMode = null;
+    dom.confirmDialog.close();
+    if (action === "cycle") startNewCycle();
+    if (action === "reset") resetGame();
+    if (action === "quit-session") abandonLearningSession();
+  });
+  dom.confirmDialog.addEventListener("close", () => {
+    if (confirmMode === "quit-session" && eventRun && !eventRun.finished) {
+      confirmMode = null;
+      dom.eventDialog.showModal();
+    }
   });
   [
     [dom.autoUpgradesToggle, "autoUpgrades"],
