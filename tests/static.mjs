@@ -49,6 +49,13 @@ assert.match(styles, /\.math-inline[^]*white-space:\s*nowrap/, "une formule ne d
 assert.equal((html.match(/data-tab="[^"]+"[^>]*role="tab"/g) || []).length, 4, "quatre onglets doivent séparer le noyau, les ateliers, les améliorations et le réseau");
 assert.equal((html.match(/data-protocol-view="[^"]+"/g) || []).length, 2, "les protocoles doivent être séparés entre puissance et confort");
 assert.match(app, /EVENT_WINDOW_MS/, "les perturbations doivent avoir une durée de disponibilité limitée");
+assert.match(app, /https:\/\/gettimeapi\.dev\/v1\/time\?timezone=UTC/, "le gain hors ligne doit utiliser une horloge UTC externe");
+assert.match(app, /trustedNow/, "les sauvegardes doivent employer l'horloge UTC vérifiée");
+assert.match(app, /Connexion UTC indisponible/, "un gain non vérifié ne doit pas être accordé silencieusement");
+assert.match(html, /id="event-dismiss"/, "une perturbation doit pouvoir être ignorée");
+assert.match(app, /dismissPendingEvent/, "l'action Ignorer doit masquer la perturbation sans lancer de questions");
+assert.match(styles, /\.event-card[^}]*pointer-events:\s*none/, "le bandeau ne doit pas intercepter les clics destinés à l'interface");
+assert.match(styles, /\.event-card button[^}]*pointer-events:\s*auto/, "les actions propres au bandeau doivent rester cliquables");
 assert.match(app, /workshopReveal/, "les ateliers doivent être révélés progressivement");
 assert.match(styles, /#event-next:not\(\[hidden\]\)[^]*position:\s*fixed/, "l'action de fin d'intervention doit rester visible");
 assert.match(html, /id="reset-mobile-button"/, "la réinitialisation doit être disponible dans l'onglet Réseau sur mobile");
@@ -66,6 +73,7 @@ assert.match(html, /Programme de première technologique 2026/, "le dialogue de 
 assert.match(html, /0\/12/, "les douze ateliers doivent être annoncés dès le chargement");
 assert.match(serviceWorker, /event\.request\.mode === "navigate"/, "les navigations de l'application installée doivent être actualisées en priorité");
 assert.match(serviceWorker, /cache: "reload"/, "le cache HTTP ne doit pas masquer les mises à jour installées");
+assert.match(serviceWorker, /origin !== self\.location\.origin/, "les requêtes vers l'horloge UTC ne doivent pas être mises en cache");
 
 const manifest = JSON.parse(manifestText);
 assert.equal(manifest.display, "standalone", "le jeu installé doit s'ouvrir en mode autonome");

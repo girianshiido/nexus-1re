@@ -12,6 +12,9 @@
   const OFFLINE_LIMIT = 4 * 60 * 60;
   const REPORT_LIMIT = 50;
   const EVENT_WINDOW_MS = 30000;
+  const TIME_API_URL = "https://gettimeapi.dev/v1/time?timezone=UTC";
+  const TIME_SYNC_TIMEOUT = 4500;
+  const TIME_RESYNC_INTERVAL = 60000;
   const TABS = ["core", "workshops", "upgrades", "network"];
 
   const EVENT_TYPES = [
@@ -107,6 +110,7 @@
     eventTimeLabel: $("#event-time-label"),
     eventTimeBar: $("#event-time-bar"),
     eventStart: $("#event-start"),
+    eventDismiss: $("#event-dismiss"),
     eventCountdown: $("#event-countdown"),
     ownedTotal: $("#owned-total"),
     accuracy: $("#accuracy-value"),
@@ -291,6 +295,11 @@
   let lastLearningRender = 0;
   let lastAutomationAt = 0;
   let calibrationView = "power";
+  let trustedClock = {
+    verified: false,
+    serverTimeAtSync: 0,
+    performanceAtSync: 0
+  };
 
   function format(value, options = {}) {
     if (!Number.isFinite(value)) return "∞";
@@ -305,6 +314,39 @@
   }
 
   function now() { return Date.now(); }
+  function trustedNow() {
+    if (!trustedClock.verified) return null;
+    return trustedClock.serverTimeAtSync + performance.now() - trustedClock.performanceAtSync;
+  }
+
+  async function syncTrustedClock() {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), TIME_SYNC_TIMEOUT);
+    const requestStarted = performance.now();
+    try {
+      const response = await fetch(`${TIME_API_URL}&request=${Date.now()}`, {
+        cache: "no-store",
+        signal: controller.signal
+      });
+      if (!response.ok) throw new Error(`UTC ${response.status}`);
+      const payload = await response.json();
+      const serverTime = Date.parse(payload.iso8601);
+      if (!Number.isFinite(serverTime) || payload.timezone !== "UTC") throw new Error("Réponse UTC invalide");
+      const requestFinished = performance.now();
+      trustedClock = {
+        verified: true,
+        serverTimeAtSync: serverTime + (requestFinished - requestStarted) / 2,
+        performanceAtSync: requestFinished
+      };
+      document.documentElement.dataset.utcClock = "verified";
+      return true;
+    } catch {
+      if (!trustedClock.verified) document.documentElement.dataset.utcClock = "unavailable";
+      return false;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
   function refreshMasteryScores() {
     Model.WORKSHOPS.forEach(workshop => {
       const adaptiveScore = Learning.scoreForSkill(Engine.SUBSKILLS, state.learning, workshop.id, now());
@@ -345,19 +387,39 @@
   }
 
   function save() {
-    state.lastSeen = now();
+    const verifiedTime = trustedNow();
+    if (verifiedTime !== null) state.lastSeen = verifiedTime;
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch { /* sauvegarde indisponible */ }
   }
 
   function applyOfflineProgress() {
-    const elapsed = Math.min(OFFLINE_LIMIT, Math.max(0, (now() - Number(state.lastSeen || now())) / 1000));
+    const verifiedTime = trustedNow();
+    if (verifiedTime === null) return false;
+    const elapsed = Math.min(OFFLINE_LIMIT, Math.max(0, (verifiedTime - Number(state.lastSeen || verifiedTime)) / 1000));
     const rate = baseProduction() * permanentMultiplier();
     const gain = rate * elapsed;
     if (gain >= 1 && elapsed > 15) {
       addFlux(gain);
       setTimeout(() => showToast(`Le laboratoire a produit ${format(gain)} flux pendant ton absence.`), 350);
     }
-    state.lastSeen = now();
+    state.lastSeen = verifiedTime;
+    return true;
+  }
+
+  async function verifyTimeAndApplyOfflineProgress({ announceFailure = false } = {}) {
+    const needsSync = !trustedClock.verified
+      || performance.now() - trustedClock.performanceAtSync >= TIME_RESYNC_INTERVAL;
+    const synchronized = needsSync ? await syncTrustedClock() : true;
+    if (!trustedClock.verified) {
+      if (announceFailure) showToast("Connexion UTC indisponible : le gain hors ligne reste en attente.");
+      return false;
+    }
+    applyOfflineProgress();
+    save();
+    if (!synchronized && announceFailure) {
+      showToast("Service UTC momentanément indisponible : la dernière horloge vérifiée reste utilisée.");
+    }
+    return true;
   }
 
   function showToast(message) {
@@ -808,7 +870,8 @@
       createdAt: now(),
       expiresAt: now() + windowMs,
       windowMs,
-      warningPlayed: false
+      warningPlayed: false,
+      dismissed: false
     };
     playSound("event");
     if (comfortStats().eventBeaconLevel > 0 && state.comfortSettings.eventAlert) {
@@ -822,6 +885,13 @@
   function scheduleNextEvent() {
     pendingEvent = null;
     state.nextEventAt = now() + (50000 + Math.random() * 30000);
+  }
+
+  function dismissPendingEvent() {
+    if (!pendingEvent || eventRun) return;
+    pendingEvent.dismissed = true;
+    renderEvent(now());
+    showToast("Perturbation ignorée sans pénalité. Tu peux continuer à jouer.");
   }
 
   function startEvent() {
@@ -1514,15 +1584,22 @@
 
   function renderEvent(nowValue) {
     if (pendingEvent && !eventRun && nowValue >= pendingEvent.expiresAt) {
+      const wasDismissed = pendingEvent.dismissed;
       pendingEvent = null;
       scheduleNextEvent();
-      showToast("La perturbation s'est dissipée. Un nouveau signal apparaîtra plus tard.");
+      if (!wasDismissed) showToast("La perturbation s'est dissipée. Un nouveau signal apparaîtra plus tard.");
     }
     if (!pendingEvent && nowValue >= state.nextEventAt && !eventRun) createPendingEvent();
-    const visibleEvent = eventRun?.mode === "event" ? eventRun.event : pendingEvent;
+    const visibleEvent = eventRun?.mode === "event"
+      ? eventRun.event
+      : pendingEvent?.dismissed
+        ? null
+        : pendingEvent;
     dom.eventCard.hidden = !visibleEvent;
+    dom.eventDismiss.hidden = eventRun?.mode === "event";
     dom.eventCard.classList.toggle("beacon", Boolean(
       pendingEvent
+      && !pendingEvent.dismissed
       && comfortStats().eventBeaconLevel > 0
       && state.comfortSettings.eventAlert
     ));
@@ -1558,6 +1635,11 @@
       return;
     }
     const unlocked = unlockedWorkshops();
+    if (pendingEvent?.dismissed) {
+      const seconds = Math.max(0, Math.ceil((pendingEvent.expiresAt - nowValue) / 1000));
+      dom.eventCountdown.textContent = `Perturbation ignorée · nouveau signal possible dans environ ${seconds} s.`;
+      return;
+    }
     if (!unlocked.length) {
       dom.eventCountdown.textContent = "Achète un atelier pour rendre les perturbations disponibles.";
     } else {
@@ -1681,6 +1763,7 @@
     save();
   });
   dom.eventStart.addEventListener("click", startEvent);
+  dom.eventDismiss.addEventListener("click", dismissPendingEvent);
   dom.tabButtons.forEach(button => button.addEventListener("click", () => setActiveTab(button.dataset.tab)));
   dom.cycleTabShortcut.addEventListener("click", () => setActiveTab("network"));
   dom.calibrationOpenUpgrades.addEventListener("click", openCalibrationDialog);
@@ -1731,8 +1814,8 @@
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) save();
     else {
-      applyOfflineProgress();
       lastFrame = performance.now();
+      verifyTimeAndApplyOfflineProgress({ announceFailure: true });
     }
   });
 
@@ -1744,7 +1827,7 @@
   setActiveTab(state.activeTab, { moveToTop: false });
   updateSoundButton();
   document.querySelectorAll(".bulk-button").forEach(button => button.classList.toggle("active", button.dataset.bulk === String(state.bulk)));
-  applyOfflineProgress();
+  verifyTimeAndApplyOfflineProgress({ announceFailure: true });
   renderWorkshops();
   renderWorkshopUpgrades();
   renderCalibrationUpgrades();
@@ -1757,7 +1840,12 @@
     getState: () => JSON.parse(JSON.stringify(state)),
     addFlux,
     createPendingEvent,
-    productionRate
+    productionRate,
+    clockStatus: () => ({
+      verified: trustedClock.verified,
+      source: TIME_API_URL,
+      now: trustedNow()
+    })
   };
 
   if ("serviceWorker" in navigator) {

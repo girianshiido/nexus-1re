@@ -20,7 +20,7 @@
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon-64.png">
     <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
-    <link rel="stylesheet" href="styles.css?v=21">
+    <link rel="stylesheet" href="styles.css?v=22">
   </head>
   <body>
     <div class="ambient ambient-a"></div>
@@ -71,6 +71,7 @@
     </section>
 
     <article id="event-card" class="event-card" hidden aria-live="polite">
+      <button id="event-dismiss" class="event-dismiss" type="button" aria-label="Ignorer cette perturbation">×</button>
       <div class="event-signal" aria-hidden="true">!</div>
       <div class="event-copy">
         <p class="eyebrow">Perturbation détectée</p>
@@ -261,10 +262,11 @@
           <li><b>Change d'onglet</b> pour acheter des ateliers, financer leurs améliorations ou suivre le réseau sans encombrer le noyau.</li>
           <li><b>Découvre les ateliers progressivement</b> : le suivant apparaît lorsque tu achètes le dernier atelier accessible.</li>
           <li><b>Interviens lors des perturbations</b>. Leur bandeau indique le flux à gagner et disparaît si tu laisses le compte à rebours se terminer.</li>
+          <li><b>Ignore librement une perturbation</b> avec la croix du bandeau : elle disparaît sans pénalité et sans bloquer le reste du jeu.</li>
           <li><b>Ouvre le Réseau</b> pour lancer un diagnostic, réviser les notions fragiles ou t'entraîner au format automatismes de l'épreuve.</li>
           <li><b>Étalonne le réseau</b> lorsque la production ralentit : tu conserves ta progression pédagogique et dépenses ensuite les points gagnés dans les protocoles permanents de l'onglet Améliorations.</li>
         </ol>
-        <p class="dialog-note">Répondre vite améliore la récompense, mais une réponse juste reste toujours utile. Une erreur ne retire jamais de flux.</p>
+        <p class="dialog-note">Répondre vite améliore la récompense, mais une réponse juste reste toujours utile. Une erreur ne retire jamais de flux. Le temps d'absence est vérifié auprès d'une horloge UTC en ligne.</p>
         <button class="primary-button full-button" value="close">J'ai compris</button>
       </form>
     </dialog>
@@ -324,6 +326,6 @@
     <script src="question-engine.js?v=23"></script>
     <script src="learning-model.js?v=1"></script>
     <script src="game-model.js?v=4"></script>
-    <script src="app.js?v=19"></script>
+    <script src="app.js?v=21"></script>
   </body>
 </html>

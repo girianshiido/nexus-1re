@@ -1,11 +1,11 @@
-const CACHE_NAME = "nexus-laboratoire-v33";
+const CACHE_NAME = "nexus-laboratoire-v35";
 const APP_SHELL = [
   "./index.html",
-  "./styles.css?v=21",
+  "./styles.css?v=22",
   "./question-engine.js?v=23",
   "./learning-model.js?v=1",
   "./game-model.js?v=4",
-  "./app.js?v=19",
+  "./app.js?v=21",
   "./manifest.webmanifest",
   "./assets/favicon-64.png",
   "./assets/apple-touch-icon.png",
@@ -30,6 +30,10 @@ self.addEventListener("activate", event => {
 
 self.addEventListener("fetch", event => {
   if (event.request.method !== "GET") return;
+  if (new URL(event.request.url).origin !== self.location.origin) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
   if (event.request.mode === "navigate") {
     event.respondWith(
       fetch(new Request(event.request, { cache: "reload" })).then(response => {
