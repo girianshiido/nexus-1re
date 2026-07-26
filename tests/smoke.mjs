@@ -43,6 +43,36 @@ assert.match(variationQuestion.visual, /marker-end="url\(#variation-arrow-/, "le
 assert.match(variationQuestion.visual, /x="221"/, "la valeur centrale doit être éloignée de la pointe de flèche");
 const variationValueRows = [...variationQuestion.visual.matchAll(/variation-value" x="\d+" y="(\d+)"/g)].map(match => Number(match[1]));
 assert.ok(variationValueRows.every(row => row > 42), "les valeurs de f(x) doivent rester sous la ligne des abscisses");
+const variationOrientations = new Set();
+const variationPrompts = new Set();
+const variationSolutionCounts = new Set();
+let variationSeed = 864209753;
+const variationRandom = () => {
+  variationSeed = (1664525 * variationSeed + 1013904223) >>> 0;
+  return variationSeed / 2 ** 32;
+};
+for (let i = 0; i < 500; i += 1) {
+  const question = engine.SKILL_GENERATORS.functions[7](variationRandom);
+  variationOrientations.add(question.visual.includes("-min") ? "minimum" : "maximum");
+  if (/décroissante/.test(question.prompt)) variationPrompts.add("decreasing");
+  else if (/croissante/.test(question.prompt)) variationPrompts.add("increasing");
+  else if (/valeur du (minimum|maximum)/.test(question.prompt)) variationPrompts.add("extremum-value");
+  else if (/Pour quelle valeur de x/.test(question.prompt)) variationPrompts.add("extremum-abscissa");
+  else if (/combien de solutions/.test(question.prompt)) {
+    variationPrompts.add("solution-count");
+    variationSolutionCounts.add(Number(question.choices[question.answer]));
+  }
+}
+assert.deepEqual([...variationOrientations].sort(), ["maximum", "minimum"], "les tableaux doivent montrer les deux orientations");
+assert.deepEqual(
+  [...variationPrompts].sort(),
+  ["decreasing", "extremum-abscissa", "extremum-value", "increasing", "solution-count"],
+  "les tableaux doivent proposer cinq lectures différentes"
+);
+assert.deepEqual([...variationSolutionCounts].sort(), [0, 1, 2], "la lecture d'équation doit proposer zéro, une ou deux solutions");
+const minimumTable = engine.SKILL_GENERATORS.functions[7](() => 0);
+assert.match(minimumTable.visual, /variation-value" x="76" y="68"/, "la valeur extérieure gauche d'un minimum doit rester près de sa flèche");
+assert.match(minimumTable.visual, /variation-value" x="362" y="68"/, "la valeur extérieure droite d'un minimum doit rester près de sa flèche");
 assert.equal(engine.canonicalChoice("1/2"), engine.canonicalChoice("2/4"), "les fractions équivalentes doivent être reconnues");
 const ratioQuestion = engine.SKILL_GENERATORS.proportions[1](Math.random);
 assert.equal(ratioQuestion.kind, "ratio-comparison", "le ratio doit comparer deux quantités comme dans le programme de seconde 2026");

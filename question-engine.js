@@ -991,23 +991,61 @@
     const centerValue = minimum ? randInt(-4, 2, rng) : leftValue;
     const edgeValue = minimum ? leftValue : randInt(-4, 2, rng);
     const values = minimum ? [leftValue, centerValue, leftValue + 2] : [edgeValue, leftValue, edgeValue - 2];
-    const good = minimum ? `]−∞ ; ${vertex}]` : `[${vertex} ; +∞[`;
-    const { choices, answer } = makeChoices(good, [
-      minimum ? `[${vertex} ; +∞[` : `]−∞ ; ${vertex}]`,
-      "Sur ℝ tout entier",
-      "Sur aucun intervalle"
-    ], rng);
+    const decreasingInterval = minimum ? `]−∞ ; ${vertex}]` : `[${vertex} ; +∞[`;
+    const increasingInterval = minimum ? `[${vertex} ; +∞[` : `]−∞ ; ${vertex}]`;
+    const mode = pick(["decreasing", "increasing", "extremum-value", "extremum-abscissa", "solution-count"], rng);
+    let prompt;
+    let good;
+    let distractors;
+    let explanation;
+    if (mode === "decreasing" || mode === "increasing") {
+      const askIncreasing = mode === "increasing";
+      good = askIncreasing ? increasingInterval : decreasingInterval;
+      distractors = [
+        askIncreasing ? decreasingInterval : increasingInterval,
+        "Sur ℝ tout entier",
+        "Sur aucun intervalle"
+      ];
+      prompt = `Sur quel intervalle la fonction est-elle ${askIncreasing ? "croissante" : "décroissante"} d'après ce tableau de variations ?`;
+      explanation = `Les flèches montrent que f est ${askIncreasing ? "croissante" : "décroissante"} sur ${good}.`;
+    } else if (mode === "extremum-value") {
+      good = values[1];
+      distractors = [values[0], values[2], vertex];
+      prompt = `Quelle est la valeur du ${minimum ? "minimum" : "maximum"} de f ?`;
+      explanation = `La valeur centrale du tableau est le ${minimum ? "minimum" : "maximum"} de f : elle vaut ${good}.`;
+    } else if (mode === "extremum-abscissa") {
+      good = vertex;
+      distractors = [values[1], -vertex, vertex + 1];
+      prompt = `Pour quelle valeur de x la fonction f atteint-elle son ${minimum ? "minimum" : "maximum"} ?`;
+      explanation = `Le changement de variation se produit à l'abscisse ${vertex} : f y atteint son ${minimum ? "minimum" : "maximum"}.`;
+    } else {
+      const requestedCount = randInt(0, 2, rng);
+      const level = requestedCount === 1
+        ? values[1]
+        : requestedCount === 2
+          ? minimum ? values[1] + 1 : values[1] - 1
+          : minimum ? Math.max(values[0], values[2]) + 1 : Math.min(values[0], values[2]) - 1;
+      good = requestedCount;
+      distractors = [0, 1, 2, 3].filter(value => value !== requestedCount);
+      prompt = `D'après ce tableau, combien de solutions l'équation f(x) = ${level} possède-t-elle ?`;
+      explanation = requestedCount === 0
+        ? `Le niveau ${level} se situe au-delà de toutes les valeurs parcourues par f : l'équation n'a pas de solution.`
+        : requestedCount === 1
+          ? `Le niveau ${level} correspond à l'unique ${minimum ? "minimum" : "maximum"} de f, atteint pour x = ${vertex}.`
+          : `Le niveau ${level} est rencontré une fois de chaque côté de x = ${vertex} : l'équation possède deux solutions.`;
+    }
+    const { choices, answer } = makeChoices(good, distractors, rng);
     const arrowId = `variation-arrow-${vertex}-${minimum ? "min" : "max"}`;
     const layout = minimum
       ? {
           arrows: { leftY: 65, centerY: 100, rightY: 58 },
-          labels: { leftY: 86, centerY: 117, rightY: 80 }
+          labels: { leftY: 68, centerY: 117, rightY: 68 }
         }
       : {
           arrows: { leftY: 94, centerY: 56, rightY: 102 },
           labels: { leftY: 114, centerY: 78, rightY: 120 }
         };
-    const variationVisual = `<svg class="variation-svg" viewBox="0 0 430 128" role="img" aria-label="Tableau de variations : f décroît ${minimum ? "jusqu'à" : "après"} ${vertex}">
+    const variationVisual = `<svg class="variation-svg" viewBox="0 0 430 128" role="img" aria-label="Tableau de variations : f ${minimum ? "décroît puis croît, avec un minimum" : "croît puis décroît, avec un maximum"} en ${vertex}">
       <defs><marker id="${arrowId}" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" /></marker></defs>
       <path class="variation-grid" d="M56 10V118 M56 42H420" />
       <text class="variation-axis" x="24" y="31">x</text>
@@ -1024,10 +1062,10 @@
     return {
       kind: "variation-reading",
       skill: "functions",
-      prompt: "Sur quel intervalle la fonction est-elle décroissante d'après ce tableau de variations ?",
+      prompt,
       choices, answer,
       visual: variationVisual,
-      explanation: `Les flèches montrent que f décroît sur ${good}.`
+      explanation
     };
   }
 
