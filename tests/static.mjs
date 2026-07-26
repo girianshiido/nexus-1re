@@ -51,6 +51,7 @@ assert.equal((html.match(/data-protocol-view="[^"]+"/g) || []).length, 2, "les p
 assert.match(app, /EVENT_WINDOW_MS/, "les perturbations doivent avoir une durée de disponibilité limitée");
 assert.match(app, /https:\/\/gettimeapi\.dev\/v1\/time\?timezone=UTC/, "le gain hors ligne doit utiliser une horloge UTC externe");
 assert.match(app, /trustedNow/, "les sauvegardes doivent employer l'horloge UTC vérifiée");
+assert.match(app, /SESSION_STARTED_AT/, "un rattrapage UTC tardif ne doit pas recompter le temps de jeu de la session");
 assert.match(app, /Connexion UTC indisponible/, "un gain non vérifié ne doit pas être accordé silencieusement");
 assert.match(html, /id="event-dismiss"/, "une perturbation doit pouvoir être ignorée");
 assert.match(app, /dismissPendingEvent/, "l'action Ignorer doit masquer la perturbation sans lancer de questions");

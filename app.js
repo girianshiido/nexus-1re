@@ -15,6 +15,7 @@
   const TIME_API_URL = "https://gettimeapi.dev/v1/time?timezone=UTC";
   const TIME_SYNC_TIMEOUT = 4500;
   const TIME_RESYNC_INTERVAL = 60000;
+  const SESSION_STARTED_AT = performance.now();
   const TABS = ["core", "workshops", "upgrades", "network"];
 
   const EVENT_TYPES = [
@@ -392,10 +393,10 @@
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch { /* sauvegarde indisponible */ }
   }
 
-  function applyOfflineProgress() {
+  function applyOfflineProgress(throughTime = trustedNow()) {
     const verifiedTime = trustedNow();
-    if (verifiedTime === null) return false;
-    const elapsed = Math.min(OFFLINE_LIMIT, Math.max(0, (verifiedTime - Number(state.lastSeen || verifiedTime)) / 1000));
+    if (verifiedTime === null || throughTime === null) return false;
+    const elapsed = Math.min(OFFLINE_LIMIT, Math.max(0, (throughTime - Number(state.lastSeen || throughTime)) / 1000));
     const rate = baseProduction() * permanentMultiplier();
     const gain = rate * elapsed;
     if (gain >= 1 && elapsed > 15) {
@@ -407,6 +408,7 @@
   }
 
   async function verifyTimeAndApplyOfflineProgress({ announceFailure = false } = {}) {
+    const hadTrustedClock = trustedClock.verified;
     const needsSync = !trustedClock.verified
       || performance.now() - trustedClock.performanceAtSync >= TIME_RESYNC_INTERVAL;
     const synchronized = needsSync ? await syncTrustedClock() : true;
@@ -414,7 +416,10 @@
       if (announceFailure) showToast("Connexion UTC indisponible : le gain hors ligne reste en attente.");
       return false;
     }
-    applyOfflineProgress();
+    const throughTime = hadTrustedClock
+      ? trustedNow()
+      : trustedNow() - (performance.now() - SESSION_STARTED_AT);
+    applyOfflineProgress(throughTime);
     save();
     if (!synchronized && announceFailure) {
       showToast("Service UTC momentanément indisponible : la dernière horloge vérifiée reste utilisée.");
