@@ -38,7 +38,7 @@ Le jeu peut être installé sur l'écran d'accueil : via le menu du navigateur s
 - Après son déblocage, le secteur de spécialité ajoute six ateliers plus coûteux dont les améliorations utilisent des facteurs ×3 à ×10.
 - Des perturbations occasionnelles proposent de une à trois questions uniquement parmi les notions achetées. Une réponse rapide améliore la récompense, mais une erreur ne retire aucune ressource.
 - Chaque bonne réponse augmente la maîtrise de la notion et renforce légèrement son atelier.
-- Un nouveau cycle remet à zéro le flux et les ateliers, conserve la maîtrise et accorde un multiplicateur permanent.
+- Un nouveau cycle remet à zéro le flux et les ateliers, conserve la maîtrise et accorde un multiplicateur permanent. Les points disponibles dépendent du flux cumulé depuis le début : redémarrer tôt ou tard donne le même capital à production totale égale.
 - Les points d'étalonnage peuvent être investis sans réduire le multiplicateur déjà gagné.
 - Chaque question possède une référence et peut être signalée localement après la réponse.
 - La progression est enregistrée localement dans le navigateur.

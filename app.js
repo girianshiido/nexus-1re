@@ -1312,7 +1312,7 @@
   function showConfirm(mode) {
     confirmMode = mode;
     if (mode === "cycle") {
-      const gain = Model.cycleGain(state.cycleFlux, state.cycle);
+      const gain = Model.cycleGain(state.lifetimeFlux, state.calibration);
       const availableAfter = Model.availableCalibration(state.calibration + gain, state.calibrationUpgrades);
       dom.confirmKicker.textContent = "Cycle d'étalonnage";
       dom.confirmTitle.textContent = "Reconfigurer le laboratoire ?";
@@ -1362,7 +1362,7 @@
   }
 
   function startNewCycle() {
-    const gain = Model.cycleGain(state.cycleFlux, state.cycle);
+    const gain = Model.cycleGain(state.lifetimeFlux, state.calibration);
     if (gain < 1) return;
     state.calibration += gain;
     state.cycle += 1;
@@ -1800,8 +1800,9 @@
     const boost = state.boostUntil > nowValue;
     const cadence = hyperStats();
     const owned = Model.totalOwned(state.workshops);
-    const cycleTarget = Model.cycleTarget(state.cycle);
-    const cycleGain = Model.cycleGain(state.cycleFlux, state.cycle);
+    const cycleTarget = Model.cycleTarget(state.calibration);
+    const cycleGain = Model.cycleGain(state.lifetimeFlux, state.calibration);
+    const cycleProgress = Model.cycleProgress(state.lifetimeFlux, state.calibration);
     const availableSubskills = accessibleSubskills();
     const masteryCounts = Learning.summarize(availableSubskills, state.learning, nowValue);
     const unlocked = unlockedWorkshops();
@@ -1813,10 +1814,10 @@
     dom.calibration.textContent = `${format(availableCalibration, { digits: 0 })}/${format(state.calibration, { digits: 0 })} pts`;
     dom.cycle.textContent = state.cycle;
     dom.cycleRing.textContent = state.cycle;
-    dom.cycleProgressText.textContent = `${format(state.cycleFlux)} / ${format(cycleTarget)}`;
-    const cycleProgress = `${Math.min(100, state.cycleFlux / cycleTarget * 100)}%`;
-    dom.cycleProgressBar.style.width = cycleProgress;
-    dom.networkCycleProgressBar.style.width = cycleProgress;
+    dom.cycleProgressText.textContent = `${format(state.lifetimeFlux)} / ${format(cycleTarget)}`;
+    const cycleProgressWidth = `${cycleProgress * 100}%`;
+    dom.cycleProgressBar.style.width = cycleProgressWidth;
+    dom.networkCycleProgressBar.style.width = cycleProgressWidth;
     dom.cycleGain.textContent = plural(cycleGain, "point");
     dom.permanentMultiplier.textContent = `Production permanente ×${format(permanentMultiplier())}`;
     dom.cycleButton.disabled = cycleGain < 1;

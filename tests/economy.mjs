@@ -116,8 +116,32 @@ assert.ok(
   "le premier atelier de spécialité doit être sensiblement plus difficile à atteindre"
 );
 
-assert.equal(model.cycleGain(model.cycleTarget(1), 1), 1);
-assert.equal(model.cycleGain(model.cycleTarget(1) * 4, 1), 2);
+assert.equal(model.cycleTarget(0), 50000, "le premier point doit demander 50 000 flux cumulés");
+assert.equal(model.calibrationPotential(854810000), 11, "855 millions de flux ne doivent plus produire une centaine de points");
+assert.equal(model.cycleGain(854810000, 0), 11);
+assert.equal(model.cycleGain(854810000, 5), 6, "les points déjà obtenus ne doivent pas être gagnés une seconde fois");
+assert.equal(model.cycleGain(854810000, 11), 0);
+assert.equal(model.cycleProgress(0, 0), 0);
+assert.equal(model.cycleProgress(model.cycleTarget(0), 0), 1);
+
+let frequentCalibration = 0;
+for (let point = 1; point <= 10; point += 1) {
+  const lifetimeFlux = model.CALIBRATION_FLUX_BASE * point ** model.CALIBRATION_FLUX_EXPONENT;
+  frequentCalibration += model.cycleGain(lifetimeFlux, frequentCalibration);
+}
+const delayedFlux = model.CALIBRATION_FLUX_BASE * 10 ** model.CALIBRATION_FLUX_EXPONENT;
+const delayedCalibration = model.cycleGain(delayedFlux, 0);
+assert.equal(frequentCalibration, delayedCalibration, "redémarrer souvent ou tard doit donner le même capital à production cumulée égale");
+assert.equal(model.calibrationPotential(model.CALIBRATION_FLUX_BASE * 200 ** 4), 200);
+
+const minimumCoreFlux = model.WORKSHOPS
+  .slice(0, model.CORE_WORKSHOP_COUNT)
+  .reduce((total, workshop) => total + Array.from({ length: 100 }, (_, owned) => model.workshopCost(workshop.id, owned))
+    .reduce((workshopTotal, cost) => workshopTotal + cost, 0), 0);
+assert.ok(
+  model.calibrationPotential(minimumCoreFlux) >= 400,
+  "les 100 unités des douze ateliers doivent naturellement dépasser le prix du secteur de spécialité"
+);
 assert.equal(model.permanentMultiplier(5), 2);
 
 console.log("Économie, paliers, clics et cycles validés.");

@@ -32,6 +32,8 @@
   const WORKSHOP_UPGRADE_SECONDS = [90, 180, 360, 720, 1440];
   const SPECIALITY_UPGRADE_SECONDS = [600, 1200, 2400, 4800, 9600];
   const SYNERGY_PER_MILESTONE = 0.08;
+  const CALIBRATION_FLUX_BASE = 50000;
+  const CALIBRATION_FLUX_EXPONENT = 4;
   const CALIBRATION_UPGRADES = [
     { id: "corePower", name: "Noyau renforcé", icon: "+", costs: [1, 2, 4, 7], description: "+25 % de flux par clic et par niveau." },
     { id: "hyperPower", name: "Amplificateur", icon: "×", costs: [1, 2, 3, 5, 8, 12], description: "+0,5 au multiplicateur d'Hypercadence." },
@@ -244,12 +246,26 @@
     return Math.max(incrementalPower, productionAnchor);
   }
 
-  function cycleTarget(cycle = 1) {
-    return 50000 * Math.pow(6, Math.max(0, cycle - 1));
+  function calibrationPotential(lifetimeFlux = 0) {
+    const ratio = Math.max(0, lifetimeFlux) / CALIBRATION_FLUX_BASE;
+    return Math.floor(Math.pow(ratio, 1 / CALIBRATION_FLUX_EXPONENT) + 1e-9);
   }
 
-  function cycleGain(cycleFlux = 0, cycle = 1) {
-    return Math.floor(Math.sqrt(Math.max(0, cycleFlux) / cycleTarget(cycle)));
+  function cycleTarget(calibration = 0) {
+    const nextPoint = Math.floor(Math.max(0, calibration)) + 1;
+    return CALIBRATION_FLUX_BASE * Math.pow(nextPoint, CALIBRATION_FLUX_EXPONENT);
+  }
+
+  function cycleProgress(lifetimeFlux = 0, calibration = 0) {
+    const earned = Math.floor(Math.max(0, calibration));
+    const previousTarget = CALIBRATION_FLUX_BASE * Math.pow(earned, CALIBRATION_FLUX_EXPONENT);
+    const nextTarget = cycleTarget(earned);
+    if (nextTarget <= previousTarget) return 0;
+    return Math.max(0, Math.min(1, (Math.max(0, lifetimeFlux) - previousTarget) / (nextTarget - previousTarget)));
+  }
+
+  function cycleGain(lifetimeFlux = 0, calibration = 0) {
+    return Math.max(0, calibrationPotential(lifetimeFlux) - Math.floor(Math.max(0, calibration)));
   }
 
   return {
@@ -260,6 +276,8 @@
     WORKSHOP_UPGRADE_SECONDS,
     SPECIALITY_UPGRADE_SECONDS,
     SYNERGY_PER_MILESTONE,
+    CALIBRATION_FLUX_BASE,
+    CALIBRATION_FLUX_EXPONENT,
     CALIBRATION_UPGRADES,
     workshopById,
     workshopCost,
@@ -286,7 +304,9 @@
     comfortStats,
     decayHyperCharge,
     clickGain,
+    calibrationPotential,
     cycleTarget,
+    cycleProgress,
     cycleGain
   };
 });
