@@ -1650,28 +1650,94 @@
   }
 
   function spreadsheetFormula(rng) {
-    const row = randInt(2, 6, rng);
-    const family = randInt(0, 2, rng);
+    const row = randInt(2, 12, rng);
+    const family = randInt(0, 6, rng);
+    const columns = shuffle(["B", "C", "D", "E", "F", "G"], rng);
+    const [firstColumn, secondColumn, thirdColumn, fourthColumn] = columns;
     let good;
     let prompt;
     let explanation;
     let distractors;
     if (family === 0) {
-      good = `=B${row}*C${row}`;
-      prompt = `Dans un tableur, la colonne B contient une quantité et la colonne C un prix unitaire. Quelle formule calcule le coût total à la ligne ${row} ?`;
-      explanation = `Une formule commence par = et multiplie les deux cellules de la même ligne : ${good}.`;
-      distractors = [`=B${row}+C${row}`, `=B${Math.max(1, row - 1)}*C${Math.max(1, row - 1)}`, `B${row}*C${row}`];
+      const situations = [
+        { first: "une quantité", second: "un prix unitaire", result: "le coût total", operation: "*", verb: "multiplie" },
+        { first: "une distance", second: "une durée", result: "la vitesse moyenne", operation: "/", verb: "divise la distance par la durée" },
+        { first: "un chiffre d'affaires", second: "des dépenses", result: "le bénéfice", operation: "-", verb: "soustrait les dépenses du chiffre d'affaires" },
+        { first: "un prix hors livraison", second: "des frais de livraison", result: "le montant à payer", operation: "+", verb: "additionne les deux montants" }
+      ];
+      const situation = pick(situations, rng);
+      good = `=${firstColumn}${row}${situation.operation}${secondColumn}${row}`;
+      prompt = `Dans un tableur, la colonne ${firstColumn} contient ${situation.first} et la colonne ${secondColumn} ${situation.second}. Quelle formule calcule ${situation.result} à la ligne ${row} ?`;
+      explanation = `La formule ${situation.verb} en utilisant les deux cellules de la ligne ${row} : ${good}.`;
+      distractors = ["+", "-", "*", "/"]
+        .filter(operation => operation !== situation.operation)
+        .map(operation => `=${firstColumn}${row}${operation}${secondColumn}${row}`);
     } else if (family === 1) {
       const lastRow = row + randInt(3, 7, rng);
-      good = `=SOMME(B${row}:B${lastRow})`;
-      prompt = `Quelle formule de tableur additionne toutes les valeurs des cellules B${row} à B${lastRow} incluses ?`;
-      explanation = `Les deux points désignent toute la plage de B${row} à B${lastRow} : ${good}.`;
-      distractors = [`=B${row}+B${lastRow}`, `=SOMME(B${row};B${lastRow})`, `=MOYENNE(B${row}:B${lastRow})`];
+      const aggregates = [
+        { name: "SOMME", request: "la somme" },
+        { name: "MOYENNE", request: "la moyenne" },
+        { name: "MIN", request: "la plus petite valeur" },
+        { name: "MAX", request: "la plus grande valeur" }
+      ];
+      const aggregate = pick(aggregates, rng);
+      const range = `${firstColumn}${row}:${firstColumn}${lastRow}`;
+      good = `=${aggregate.name}(${range})`;
+      prompt = `Quelle formule de tableur calcule ${aggregate.request} de toutes les cellules de ${firstColumn}${row} à ${firstColumn}${lastRow} incluses ?`;
+      explanation = `${aggregate.name} appliquée à la plage ${range} calcule ${aggregate.request} demandée : ${good}.`;
+      distractors = aggregates.filter(item => item !== aggregate).map(item => `=${item.name}(${range})`);
+    } else if (family === 2) {
+      const increase = rng() < 0.5;
+      good = `=${firstColumn}${row}*(1${increase ? "+" : "-"}${secondColumn}${row})`;
+      prompt = `La cellule ${firstColumn}${row} contient une valeur initiale et ${secondColumn}${row} un taux ${increase ? "d'augmentation" : "de diminution"} écrit sous forme décimale. Quelle formule calcule la valeur finale ?`;
+      explanation = `Une ${increase ? "hausse" : "baisse"} utilise le coefficient multiplicateur 1 ${increase ? "+" : "−"} ${secondColumn}${row} : ${good}.`;
+      distractors = [
+        `=${firstColumn}${row}*(1${increase ? "-" : "+"}${secondColumn}${row})`,
+        `=${firstColumn}${row}*${secondColumn}${row}`,
+        `=${firstColumn}${row}${increase ? "+" : "-"}${secondColumn}${row}`
+      ];
+    } else if (family === 3) {
+      good = `=${firstColumn}${row}*${secondColumn}${row}+${thirdColumn}${row}*${fourthColumn}${row}`;
+      prompt = `À la ligne ${row}, ${firstColumn} et ${thirdColumn} contiennent les quantités de deux produits ; ${secondColumn} et ${fourthColumn} leurs prix unitaires. Quelle formule donne le coût total des deux produits ?`;
+      explanation = `On calcule chaque coût, puis on les additionne : ${good}.`;
+      distractors = [
+        `=(${firstColumn}${row}+${thirdColumn}${row})*(${secondColumn}${row}+${fourthColumn}${row})`,
+        `=${firstColumn}${row}*${secondColumn}${row}-${thirdColumn}${row}*${fourthColumn}${row}`,
+        `=${firstColumn}${row}+${secondColumn}${row}+${thirdColumn}${row}+${fourthColumn}${row}`
+      ];
+    } else if (family === 4) {
+      const fixedColumn = pick(["H", "I", "J"], rng);
+      const fixedRow = randInt(1, 3, rng);
+      good = `=${firstColumn}${row}*$${fixedColumn}$${fixedRow}`;
+      prompt = `La cellule ${firstColumn}${row} contient un montant et $${fixedColumn}$${fixedRow} un coefficient commun à toutes les lignes. Quelle formule peut être recopiée vers le bas sans déplacer la cellule du coefficient ?`;
+      explanation = `Les signes $ rendent la colonne ${fixedColumn} et la ligne ${fixedRow} absolues, tandis que ${firstColumn}${row} reste relative : ${good}.`;
+      distractors = [
+        `=${firstColumn}${row}*${fixedColumn}${fixedRow}`,
+        `=$${firstColumn}$${row}*${fixedColumn}${fixedRow}`,
+        `=$${firstColumn}${row}*${fixedColumn}$${fixedRow}`
+      ];
+    } else if (family === 5) {
+      const sourceRow = randInt(2, 5, rng);
+      const targetRow = sourceRow + randInt(2, 6, rng);
+      const fixedColumn = pick(["H", "I", "J"], rng);
+      const fixedRow = randInt(1, 3, rng);
+      good = `=${firstColumn}${targetRow}*$${fixedColumn}$${fixedRow}`;
+      prompt = `La formule =${firstColumn}${sourceRow}*$${fixedColumn}$${fixedRow} est recopiée de la ligne ${sourceRow} à la ligne ${targetRow}. Quelle formule obtient-on ?`;
+      explanation = `${firstColumn}${sourceRow} est une référence relative et devient ${firstColumn}${targetRow}. La référence $${fixedColumn}$${fixedRow} reste fixe : ${good}.`;
+      distractors = [
+        `=${firstColumn}${sourceRow}*$${fixedColumn}$${fixedRow}`,
+        `=$${firstColumn}$${sourceRow}*${fixedColumn}${targetRow}`,
+        `=${firstColumn}${targetRow}*${fixedColumn}${targetRow}`
+      ];
     } else {
-      good = `=B${row}*(1+C${row})`;
-      prompt = `La cellule B${row} contient un prix et C${row} un taux d'augmentation écrit sous forme décimale. Quelle formule calcule le nouveau prix ?`;
-      explanation = `Après une hausse de taux C${row}, le coefficient multiplicateur est 1 + C${row} : ${good}.`;
-      distractors = [`=B${row}+C${row}`, `=B${row}*C${row}`, `=B${row}/(1+C${row})`];
+      good = `=(${secondColumn}${row}-${firstColumn}${row})/${firstColumn}${row}`;
+      prompt = `La cellule ${firstColumn}${row} contient une valeur initiale et ${secondColumn}${row} la valeur finale. Quelle formule calcule le taux d'évolution ?`;
+      explanation = `Le taux d'évolution est (valeur finale − valeur initiale) / valeur initiale : ${good}.`;
+      distractors = [
+        `=(${secondColumn}${row}-${firstColumn}${row})/${secondColumn}${row}`,
+        `=${secondColumn}${row}/${firstColumn}${row}`,
+        `=(${firstColumn}${row}-${secondColumn}${row})/${firstColumn}${row}`
+      ];
     }
     const { choices, answer } = makeChoices(good, distractors, rng);
     return {

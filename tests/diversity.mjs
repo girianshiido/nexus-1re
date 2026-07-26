@@ -77,7 +77,30 @@ assert.deepEqual(
 );
 
 expectVariety("python-function", 45, 200);
-expectVariety("spreadsheet-formula", 25, 25);
+const spreadsheets = expectVariety("spreadsheet-formula", 80, 300);
+assert.ok(
+  spreadsheets.every(question => question.choices.every(choice => choice.startsWith("="))),
+  "tous les distracteurs de tableur doivent être des formules syntaxiquement plausibles"
+);
+assert.deepEqual(
+  [...new Set(spreadsheets.map(question => {
+    if (/est recopiée/.test(question.prompt)) return "copy";
+    if (/coefficient commun/.test(question.prompt)) return "absolute-reference";
+    if (/deux produits/.test(question.prompt)) return "two-products";
+    if (/taux d'évolution/.test(question.prompt)) return "evolution-rate";
+    if (/valeur finale/.test(question.prompt)) return "percentage";
+    if (/toutes les cellules/.test(question.prompt)) return "aggregate";
+    return "row-operation";
+  }))].sort(),
+  ["absolute-reference", "aggregate", "copy", "evolution-rate", "percentage", "row-operation", "two-products"],
+  "les formules de tableur doivent couvrir sept raisonnements différents"
+);
+const rowOperations = spreadsheets.filter(question => /Quelle formule calcule (?:le|la) /.test(question.prompt) && /à la ligne/.test(question.prompt));
+assert.deepEqual(
+  [...new Set(rowOperations.map(correctAnswer).map(answer => answer.match(/[+*/-]/)?.[0]))].sort(),
+  ["*", "+", "-", "/"],
+  "la lecture d'une ligne doit varier entre produit, somme, différence et quotient"
+);
 
 const filters = expectVariety("data-filter", 6, 500);
 assert.deepEqual(
