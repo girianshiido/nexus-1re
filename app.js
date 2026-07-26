@@ -88,6 +88,7 @@
     cycleButton: $("#cycle-button"),
     calibrationAvailable: $("#calibration-available"),
     calibrationUpgradeList: $("#calibration-upgrade-list"),
+    protocolViewButtons: [...document.querySelectorAll("[data-protocol-view]")],
     masteryTotal: $("#mastery-total"),
     corePanel: $(".core-panel"),
     coreButton: $("#core-button"),
@@ -115,6 +116,7 @@
     unlockedSkills: $("#unlocked-skills"),
     workshopList: $("#workshop-list"),
     workshopUpgradeList: $("#workshop-upgrade-list"),
+    milestoneBulkButton: $("#milestone-bulk-button"),
     helpButton: $("#help-button"),
     programmeButton: $("#programme-button"),
     soundButton: $("#sound-button"),
@@ -147,6 +149,7 @@
     eventNext: $("#event-next"),
     diagnosticButton: $("#diagnostic-button"),
     reviewButton: $("#review-button"),
+    mistakeButton: $("#mistake-button"),
     examButton: $("#exam-button"),
     learningRecommendation: $("#learning-recommendation"),
     learningStageSummary: $("#learning-stage-summary"),
@@ -154,6 +157,10 @@
     learningWorkshops: $("#learning-workshops"),
     resetButton: $("#reset-button"),
     resetMobileButton: $("#reset-mobile-button"),
+    comfortControls: $("#comfort-controls"),
+    autoUpgradesToggle: $("#auto-upgrades-toggle"),
+    reserveToggle: $("#reserve-toggle"),
+    eventAlertToggle: $("#event-alert-toggle"),
     confirmDialog: $("#confirm-dialog"),
     confirmKicker: $("#confirm-kicker"),
     confirmTitle: $("#confirm-title"),
@@ -203,6 +210,7 @@
       bulk: "1",
       recentKeys: [],
       recentKinds: [],
+      recentMistakes: [],
       questionReports: [],
       activeTab: "core",
       workshopReveal: 1,
@@ -210,6 +218,11 @@
       learningSequence: 0,
       diagnosticsCompleted: 0,
       examBest: null,
+      comfortSettings: {
+        autoUpgrades: false,
+        reserve: true,
+        eventAlert: true
+      },
       lastSeen: Date.now()
     };
   }
@@ -235,13 +248,19 @@
       });
       merged.recentKeys = Array.isArray(parsed.recentKeys) ? parsed.recentKeys.slice(-12) : [];
       merged.recentKinds = Array.isArray(parsed.recentKinds) ? parsed.recentKinds.slice(-2) : [];
+      const validKinds = new Set(Engine.SUBSKILLS.map(subskill => subskill.id));
+      merged.recentMistakes = Array.isArray(parsed.recentMistakes)
+        ? [...new Set(parsed.recentMistakes.filter(kind => validKinds.has(kind)))].slice(0, 12)
+        : [];
       merged.questionReports = Array.isArray(parsed.questionReports) ? parsed.questionReports.slice(-REPORT_LIMIT) : [];
       merged.learning = parsed.learning && typeof parsed.learning === "object" ? parsed.learning : {};
       Object.keys(merged.learning).forEach(kind => { merged.learning[kind] = Learning.normalizeRecord(merged.learning[kind]); });
       merged.learningSequence = Math.max(0, Math.floor(Number(parsed.learningSequence) || 0));
       merged.diagnosticsCompleted = Math.max(0, Math.floor(Number(parsed.diagnosticsCompleted) || 0));
       merged.examBest = Number.isFinite(Number(parsed.examBest)) ? Math.max(0, Math.min(6, Number(parsed.examBest))) : null;
+      merged.comfortSettings = { ...initial.comfortSettings, ...(parsed.comfortSettings || {}) };
       merged.activeTab = TABS.includes(parsed.activeTab) ? parsed.activeTab : "core";
+      if (parsed.bulk === "milestone" && !(merged.calibrationUpgrades.milestonePlanner > 0)) merged.bulk = "1";
       if (Number.isFinite(parsed.workshopReveal)) {
         merged.workshopReveal = Math.min(Model.WORKSHOPS.length - 1, Math.max(1, Math.floor(parsed.workshopReveal)));
       } else {
@@ -270,6 +289,8 @@
   let lastRender = 0;
   let lastSave = 0;
   let lastLearningRender = 0;
+  let lastAutomationAt = 0;
+  let calibrationView = "power";
 
   function format(value, options = {}) {
     if (!Number.isFinite(value)) return "∞";
@@ -304,9 +325,10 @@
   function isHyper() { return state.hyperUntil > now(); }
   function isBoosted() { return state.boostUntil > now(); }
   function hyperStats() { return Model.hyperStats(state.calibrationUpgrades); }
+  function comfortStats() { return Model.comfortStats(state.calibrationUpgrades); }
   function permanentMultiplier() { return Model.permanentMultiplier(state.calibration); }
   function baseProduction() { return Model.baseProduction(state.workshops, state.mastery, state.workshopUpgrades); }
-  function clickValue() { return Model.clickGain(state.totalClicks, state.workshops, state.calibration, state.calibrationUpgrades); }
+  function clickValue() { return Model.clickGain(state.totalClicks, state.workshops, state.calibration, state.calibrationUpgrades, baseProduction()); }
   function boostMultiplier() { return isBoosted() ? state.boostMultiplier : 1; }
   function productionRate() {
     const boost = boostMultiplier();
@@ -368,6 +390,19 @@
 
   function openCalibrationDialog() {
     if (!dom.calibrationDialog.open) dom.calibrationDialog.showModal();
+  }
+
+  function setCalibrationView(view) {
+    calibrationView = view === "comfort" ? "comfort" : "power";
+    dom.protocolViewButtons.forEach(button => {
+      const active = button.dataset.protocolView === calibrationView;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-selected", String(active));
+    });
+    dom.calibrationUpgradeList.querySelectorAll("[data-calibration-group]").forEach(element => {
+      element.hidden = element.dataset.calibrationGroup !== calibrationView;
+    });
+    renderComfortControls();
   }
 
   function questionReference(question) {
@@ -633,7 +668,8 @@
 
   function workshopQuote(workshop) {
     const owned = state.workshops[workshop.id] || 0;
-    return Model.purchaseQuote(workshop.id, owned, state.bulk, state.flux);
+    const available = state.bulk === "milestone" ? Infinity : state.flux;
+    return Model.purchaseQuote(workshop.id, owned, state.bulk, available);
   }
 
   function buyWorkshop(id) {
@@ -667,7 +703,7 @@
     renderWorkshopUpgrades();
   }
 
-  function buyWorkshopUpgrade(id) {
+  function buyWorkshopUpgrade(id, { automatic = false } = {}) {
     const workshop = Model.workshopById(id);
     if (!workshop) return;
     const level = state.workshopUpgrades[id] || 0;
@@ -675,8 +711,10 @@
     if (!status.unlocked || status.completed || status.cost > state.flux) return;
     state.flux -= status.cost;
     state.workshopUpgrades[id] = level + 1;
-    playSound("buy");
-    showToast(`${workshop.name} amélioré : sa production est doublée.`);
+    if (!automatic) {
+      playSound("buy");
+      showToast(`${workshop.name} amélioré : sa production est doublée.`);
+    }
     renderWorkshops();
     renderWorkshopUpgrades();
   }
@@ -688,6 +726,12 @@
     if (id === "hyperStability") return `Perte ${format(stats.decayPerSecond)} charge/s`;
     if (id === "hyperDuration") return `Durée ${format(stats.durationMs / 1000)} s`;
     if (id === "hyperPulses") return `${format(stats.pulsesPerSecond)} impulsion${stats.pulsesPerSecond > 1 ? "s" : ""}/s`;
+    const comfort = Model.comfortStats({ ...state.calibrationUpgrades, [id]: level });
+    if (id === "milestonePlanner") return level ? "Achat jusqu'au palier activé" : "Bouton Palier verrouillé";
+    if (id === "fluxReserve") return level ? `${format(comfort.reserveSeconds)} s de production protégées` : "Aucune réserve protégée";
+    if (id === "autoUpgrades") return level ? "Collecte automatique disponible" : "Collecte manuelle";
+    if (id === "errorNotebook") return level ? `${plural(state.recentMistakes.length, "notion")} dans le carnet` : "Carnet verrouillé";
+    if (id === "eventBeacon") return level ? `Signaux disponibles ${format(comfort.eventWindowMs / 1000)} s` : "Signaux disponibles 30 s";
     return "";
   }
 
@@ -699,10 +743,45 @@
     const available = Model.availableCalibration(state.calibration, state.calibrationUpgrades);
     if (!Number.isFinite(cost) || cost > available) return;
     state.calibrationUpgrades[id] = level + 1;
+    if (id === "autoUpgrades") state.comfortSettings.autoUpgrades = true;
+    if (id === "fluxReserve") state.comfortSettings.reserve = true;
+    if (id === "eventBeacon") state.comfortSettings.eventAlert = true;
     playSound("buy");
     save();
     renderCalibrationUpgrades();
-    showToast(`${upgrade.name} passe au niveau ${level + 1}.`);
+    renderComfortControls();
+    renderLearning();
+    showToast(upgrade.protocol && upgrade.costs.length === 1
+      ? `${upgrade.name} acquis définitivement.`
+      : `${upgrade.name} passe au niveau ${level + 1}.`);
+  }
+
+  function protectedFlux() {
+    if (!state.comfortSettings.reserve) return 0;
+    return baseProduction() * permanentMultiplier() * comfortStats().reserveSeconds;
+  }
+
+  function runAutomation(timestamp) {
+    const comfort = comfortStats();
+    if (!comfort.autoUpgrades || !state.comfortSettings.autoUpgrades || timestamp - lastAutomationAt < 750) return;
+    lastAutomationAt = timestamp;
+    const spendable = Math.max(0, state.flux - protectedFlux());
+    const candidate = Model.WORKSHOPS
+      .map((workshop, index) => ({
+        workshop,
+        index,
+        status: Model.workshopUpgradeStatus(
+          workshop.id,
+          state.workshops[workshop.id] || 0,
+          state.workshopUpgrades[workshop.id] || 0
+        )
+      }))
+      .filter(item => item.index <= state.workshopReveal
+        && item.status.unlocked
+        && !item.status.completed
+        && item.status.cost <= spendable)
+      .sort((a, b) => a.status.cost - b.status.cost)[0];
+    if (candidate) buyWorkshopUpgrade(candidate.workshop.id, { automatic: true });
   }
 
   function unlockedWorkshops() {
@@ -720,15 +799,24 @@
     const questionCount = maxTier >= 7 ? 3 : maxTier >= 4 ? 2 : 1;
     const baseReward = Math.max(120, baseProduction() * 60, clickValue() * 80);
     const typeMultiplier = type.id === "cache" ? 1.5 : type.id === "surge" ? 0.9 : 1;
+    const windowMs = comfortStats().eventWindowMs;
     pendingEvent = {
       ...type,
       skills: unlocked.map(workshop => workshop.id),
       questionCount,
       fluxReward: Math.ceil(baseReward * typeMultiplier * (1 + (questionCount - 1) * 0.25)),
       createdAt: now(),
-      expiresAt: now() + EVENT_WINDOW_MS
+      expiresAt: now() + windowMs,
+      windowMs,
+      warningPlayed: false
     };
     playSound("event");
+    if (comfortStats().eventBeaconLevel > 0 && state.comfortSettings.eventAlert) {
+      navigator.vibrate?.([120, 80, 120]);
+      setTimeout(() => {
+        if (pendingEvent) playSound("event");
+      }, 650);
+    }
   }
 
   function scheduleNextEvent() {
@@ -789,6 +877,20 @@
         description: "Les sous-notions fragiles et à réviser passent en priorité."
       };
     }
+    if (mode === "mistakes") {
+      const kinds = state.recentMistakes.filter(kind => Engine.SUBSKILLS.some(subskill => subskill.id === kind));
+      const skills = [...new Set(Engine.SUBSKILLS
+        .filter(subskill => kinds.includes(subskill.id))
+        .map(subskill => subskill.skill))];
+      return {
+        title: "Carnet d'erreurs",
+        kicker: `Reprise ciblée · ${Math.min(6, Math.max(3, kinds.length * 2))} questions`,
+        questionCount: Math.min(6, Math.max(3, kinds.length * 2)),
+        skills,
+        kinds,
+        description: "De nouveaux nombres, mais les mêmes points à consolider."
+      };
+    }
     return {
       title: "Révision adaptative",
       kicker: "Parcours adaptatif · 6 questions",
@@ -802,6 +904,10 @@
     if (eventRun) {
       if (!dom.eventDialog.open) dom.eventDialog.showModal();
       showToast("Une session est déjà en cours.");
+      return;
+    }
+    if (mode === "mistakes" && !state.recentMistakes.length) {
+      showToast("Le carnet est vide : tes prochaines erreurs y seront rangées.");
       return;
     }
     const definition = learningSessionDefinition(mode, targetSkill);
@@ -826,7 +932,10 @@
 
   function selectQuestionSubskill() {
     const run = eventRun;
-    const available = Engine.SUBSKILLS.filter(subskill => run.event.skills.includes(subskill.skill));
+    const available = Engine.SUBSKILLS.filter(subskill =>
+      run.event.skills.includes(subskill.skill)
+      && (!run.event.kinds || run.event.kinds.includes(subskill.id))
+    );
     const unrepresentedSkills = run.event.skills.filter(skill => !run.usedSkills.includes(skill));
     const avoidKinds = run.mode === "event" ? state.recentKinds : run.usedKinds.slice(-8);
     return Learning.pickSubskill(available, state.learning, state.learningSequence, Math.random, {
@@ -916,8 +1025,15 @@
       eventRun.correct += 1;
       if (eventRun.mode === "event" && elapsed <= FAST_TIME) eventRun.fast += 1;
       playSound(eventRun.mode === "exam" ? "buy" : "correct");
+      if (eventRun.mode === "mistakes") {
+        state.recentMistakes = state.recentMistakes.filter(kind => kind !== currentQuestion.kind);
+      }
     } else {
       state.currentStreak = 0;
+      state.recentMistakes = [
+        currentQuestion.kind,
+        ...state.recentMistakes.filter(kind => kind !== currentQuestion.kind)
+      ].slice(0, 12);
       playSound(eventRun.mode === "exam" ? "buy" : "wrong");
     }
 
@@ -1126,6 +1242,7 @@
           <div class="workshop-meta">
             <span id="rate-${workshop.id}">0/s</span>
             <span id="mastery-${workshop.id}">Maîtrise 0</span>
+            <span id="synergy-${workshop.id}" class="workshop-synergy"></span>
             <span id="milestone-${workshop.id}">Palier à 10</span>
           </div>
         </div>
@@ -1176,22 +1293,47 @@
       card.hidden = index > state.workshopReveal;
       const quote = workshopQuote(workshop);
       const button = card.querySelector(".workshop-buy");
+      const affordable = quote.quantity > 0 && quote.cost <= state.flux;
       const upgradeLevel = state.workshopUpgrades[workshop.id] || 0;
       const upgradeStatus = Model.workshopUpgradeStatus(workshop.id, count, upgradeLevel);
-      const rate = Model.workshopProduction(workshop.id, count, state.mastery[workshop.id], upgradeLevel) * permanentMultiplier() * (isBoosted() ? state.boostMultiplier : 1);
+      const rate = Model.workshopProduction(
+        workshop.id,
+        count,
+        state.mastery[workshop.id],
+        upgradeLevel,
+        state.workshops,
+        state.mastery
+      ) * permanentMultiplier() * (isBoosted() ? state.boostMultiplier : 1);
+      const support = Model.workshopSupportBonus(workshop.id, count, state.mastery[workshop.id]);
+      const received = Model.workshopSynergyMultiplier(workshop.id, state.workshops, state.mastery);
       card.classList.toggle("owned", count > 0);
-      card.classList.toggle("unaffordable", !quote.quantity && !(upgradeStatus.unlocked && state.flux >= upgradeStatus.cost));
+      card.classList.toggle("unaffordable", !affordable && !(upgradeStatus.unlocked && state.flux >= upgradeStatus.cost));
       card.querySelector(`#count-bg-${workshop.id}`).textContent = count;
       card.querySelector(`#rate-${workshop.id}`).innerHTML = `<b>${format(rate)}/s</b>`;
       card.querySelector(`#mastery-${workshop.id}`).textContent = skillStageSummary(workshop.id);
+      const synergyParts = [];
+      if (support > 0) synergyParts.push(`Passerelle +${format(support * 100)} %`);
+      if (received > 1.001) synergyParts.push(`reçoit ×${format(received)}`);
+      const synergy = card.querySelector(`#synergy-${workshop.id}`);
+      synergy.textContent = synergyParts.join(" · ");
+      synergy.hidden = !synergyParts.length;
       card.querySelector(`#milestone-${workshop.id}`).textContent = upgradeStatus.completed
         ? "Toutes les améliorations achetées"
         : upgradeStatus.unlocked
           ? `Palier ${upgradeStatus.milestone} atteint · amélioration disponible`
           : `Prochain palier : ${upgradeStatus.milestone} (${count}/${upgradeStatus.milestone})`;
-      button.disabled = !quote.quantity;
-      button.querySelector("span").textContent = quote.quantity ? `Acheter ×${quote.quantity}` : "Acheter";
-      button.querySelector("small").textContent = quote.quantity ? `${format(quote.cost)} flux` : `${format(Model.workshopCost(workshop.id, count))} flux`;
+      button.disabled = !affordable;
+      const noMoreMilestone = state.bulk === "milestone" && Model.nextMilestone(count) === null;
+      button.querySelector("span").textContent = noMoreMilestone
+        ? "Tous les paliers"
+        : quote.quantity
+          ? `Acheter ×${quote.quantity}`
+          : "Acheter";
+      button.querySelector("small").textContent = quote.quantity
+        ? `${format(quote.cost)} flux`
+        : noMoreMilestone
+          ? "200 atteint"
+          : `${format(Model.workshopCost(workshop.id, count))} flux`;
     });
     const teaser = dom.workshopList.querySelector("#next-workshop-teaser");
     const next = Model.WORKSHOPS[state.workshopReveal + 1];
@@ -1218,10 +1360,21 @@
 
   function createCalibrationCards() {
     const fragment = document.createDocumentFragment();
+    let currentGroup = null;
     Model.CALIBRATION_UPGRADES.forEach(upgrade => {
+      const group = upgrade.protocol ? "Confort du laboratoire" : "Puissance du Noyau";
+      if (group !== currentGroup) {
+        const heading = document.createElement("h3");
+        heading.className = "calibration-group-title";
+        heading.textContent = group;
+        heading.dataset.calibrationGroup = upgrade.protocol ? "comfort" : "power";
+        fragment.append(heading);
+        currentGroup = group;
+      }
       const card = document.createElement("article");
-      card.className = "calibration-upgrade";
+      card.className = `calibration-upgrade${upgrade.protocol ? " comfort-protocol" : ""}`;
       card.dataset.calibrationCard = upgrade.id;
+      card.dataset.calibrationGroup = upgrade.protocol ? "comfort" : "power";
       card.innerHTML = `
         <span class="calibration-icon" aria-hidden="true">${upgrade.icon}</span>
         <div><strong>${upgrade.name}</strong><p>${upgrade.description}</p><small id="calibration-effect-${upgrade.id}"></small></div>
@@ -1233,6 +1386,7 @@
       const button = event.target.closest("[data-calibration-buy]");
       if (button) buyCalibrationUpgrade(button.dataset.calibrationBuy);
     });
+    setCalibrationView(calibrationView);
   }
 
   function renderCalibrationUpgrades() {
@@ -1248,9 +1402,51 @@
       card.classList.toggle("maxed", maxed);
       card.querySelector(`#calibration-effect-${upgrade.id}`).textContent = calibrationEffect(upgrade.id, level);
       button.disabled = maxed || cost > available;
-      button.querySelector("span").textContent = maxed ? "MAX" : `Niv. ${level} → ${level + 1}`;
-      button.querySelector("small").textContent = maxed ? "Terminé" : plural(cost, "pt");
+      button.querySelector("span").textContent = maxed
+        ? (upgrade.protocol && upgrade.costs.length === 1 ? "ACQUIS" : "MAX")
+        : upgrade.protocol && upgrade.costs.length === 1
+          ? "Acquérir"
+          : `Niv. ${level} → ${level + 1}`;
+      button.querySelector("small").textContent = maxed ? "Permanent" : plural(cost, "pt");
     });
+    renderComfortControls();
+  }
+
+  function setToggle(button, visible, active, title, detail) {
+    button.hidden = !visible;
+    if (!visible) return;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-pressed", String(active));
+    button.innerHTML = `<span>${title}</span><small>${detail}</small><b>${active ? "ACTIF" : "PAUSE"}</b>`;
+  }
+
+  function renderComfortControls() {
+    const comfort = comfortStats();
+    const anyControl = comfort.autoUpgrades || comfort.reserveSeconds > 0 || comfort.eventBeaconLevel > 0;
+    dom.comfortControls.hidden = calibrationView !== "comfort" || !anyControl;
+    setToggle(
+      dom.autoUpgradesToggle,
+      comfort.autoUpgrades,
+      state.comfortSettings.autoUpgrades,
+      "Collecteur autonome",
+      "Achète les améliorations ×2 abordables"
+    );
+    setToggle(
+      dom.reserveToggle,
+      comfort.reserveSeconds > 0,
+      state.comfortSettings.reserve,
+      "Réserve de sécurité",
+      `${format(protectedFlux())} flux protégés · ${format(comfort.reserveSeconds)} s`
+    );
+    setToggle(
+      dom.eventAlertToggle,
+      comfort.eventBeaconLevel > 0,
+      state.comfortSettings.eventAlert,
+      "Alerte renforcée",
+      `Signal sonore et vibration · fenêtre ${format(comfort.eventWindowMs / 1000)} s`
+    );
+    dom.milestoneBulkButton.hidden = !comfort.milestonePlanner;
+    if (!comfort.milestonePlanner && state.bulk === "milestone") state.bulk = "1";
   }
 
   function renderLearning() {
@@ -1309,6 +1505,11 @@
     dom.examButton.textContent = state.examBest === null
       ? "Automatismes épreuve · 12 QCM"
       : `Automatismes épreuve · record ${String(state.examBest).replace(".", ",")}/6`;
+    dom.mistakeButton.hidden = !comfortStats().errorNotebook;
+    dom.mistakeButton.disabled = state.recentMistakes.length === 0;
+    dom.mistakeButton.textContent = state.recentMistakes.length
+      ? `Carnet d'erreurs · ${plural(state.recentMistakes.length, "notion")}`
+      : "Carnet d'erreurs · vide";
   }
 
   function renderEvent(nowValue) {
@@ -1320,6 +1521,11 @@
     if (!pendingEvent && nowValue >= state.nextEventAt && !eventRun) createPendingEvent();
     const visibleEvent = eventRun?.mode === "event" ? eventRun.event : pendingEvent;
     dom.eventCard.hidden = !visibleEvent;
+    dom.eventCard.classList.toggle("beacon", Boolean(
+      pendingEvent
+      && comfortStats().eventBeaconLevel > 0
+      && state.comfortSettings.eventAlert
+    ));
     if (visibleEvent) {
       dom.eventTitle.textContent = visibleEvent.title;
       dom.eventDescription.textContent = visibleEvent.description;
@@ -1336,8 +1542,17 @@
         dom.eventCountdown.textContent = "Intervention en cours — le laboratoire continue de produire.";
       } else {
         const remaining = Math.max(0, visibleEvent.expiresAt - nowValue);
+        if (pendingEvent
+          && comfortStats().eventBeaconLevel > 1
+          && state.comfortSettings.eventAlert
+          && remaining <= 10000
+          && !pendingEvent.warningPlayed) {
+          pendingEvent.warningPlayed = true;
+          playSound("event");
+          navigator.vibrate?.([180, 70, 180]);
+        }
         dom.eventTimeLabel.textContent = `${Math.ceil(remaining / 1000)} s`;
-        dom.eventTimeBar.style.width = `${remaining / EVENT_WINDOW_MS * 100}%`;
+        dom.eventTimeBar.style.width = `${remaining / (visibleEvent.windowMs || EVENT_WINDOW_MS) * 100}%`;
         dom.eventCountdown.textContent = `Signal actif encore ${Math.ceil(remaining / 1000)} s.`;
       }
       return;
@@ -1428,6 +1643,7 @@
     const delta = Math.min(0.25, Math.max(0, (timestamp - lastFrame) / 1000));
     lastFrame = timestamp;
     addFlux(productionRate() * delta);
+    runAutomation(timestamp);
     const cadence = hyperStats();
     if (!isHyper() && state.chargeClicks > 0 && now() - state.lastManualClickAt > cadence.idleDelayMs) {
       state.chargeClicks = Model.decayHyperCharge(state.chargeClicks, now() - state.lastManualClickAt, delta, state.calibrationUpgrades);
@@ -1469,6 +1685,7 @@
   dom.cycleTabShortcut.addEventListener("click", () => setActiveTab("network"));
   dom.calibrationOpenUpgrades.addEventListener("click", openCalibrationDialog);
   dom.calibrationClose.addEventListener("click", () => dom.calibrationDialog.close());
+  dom.protocolViewButtons.forEach(button => button.addEventListener("click", () => setCalibrationView(button.dataset.protocolView)));
   dom.eventClose.addEventListener("click", () => {
     dom.eventDialog.close();
     if (eventRun?.finished) {
@@ -1479,6 +1696,7 @@
   dom.eventNext.addEventListener("click", advanceEvent);
   dom.diagnosticButton.addEventListener("click", () => startLearningSession("diagnostic"));
   dom.reviewButton.addEventListener("click", () => startLearningSession("review"));
+  dom.mistakeButton.addEventListener("click", () => startLearningSession("mistakes"));
   dom.examButton.addEventListener("click", () => startLearningSession("exam"));
   dom.learningWorkshops.addEventListener("click", event => {
     const button = event.target.closest("[data-practice-skill]");
@@ -1495,6 +1713,15 @@
     if (confirmMode === "reset") resetGame();
     confirmMode = null;
   });
+  [
+    [dom.autoUpgradesToggle, "autoUpgrades"],
+    [dom.reserveToggle, "reserve"],
+    [dom.eventAlertToggle, "eventAlert"]
+  ].forEach(([button, setting]) => button.addEventListener("click", () => {
+    state.comfortSettings[setting] = !state.comfortSettings[setting];
+    renderComfortControls();
+    save();
+  }));
   document.querySelectorAll(".bulk-button").forEach(button => button.addEventListener("click", () => {
     state.bulk = button.dataset.bulk;
     document.querySelectorAll(".bulk-button").forEach(item => item.classList.toggle("active", item === button));

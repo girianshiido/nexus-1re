@@ -22,12 +22,18 @@
 
   const MILESTONES = [10, 25, 50, 100, 200];
   const WORKSHOP_UPGRADE_SECONDS = [90, 180, 360, 720, 1440];
+  const SYNERGY_PER_MILESTONE = 0.08;
   const CALIBRATION_UPGRADES = [
     { id: "corePower", name: "Noyau renforcé", icon: "+", costs: [1, 2, 4, 7], description: "+25 % de flux par clic et par niveau." },
     { id: "hyperPower", name: "Amplificateur", icon: "×", costs: [1, 2, 3, 5, 8, 12], description: "+0,5 au multiplicateur d'Hypercadence." },
     { id: "hyperStability", name: "Condensateur", icon: "≈", costs: [1, 2, 4, 7], description: "La charge se dissipe moins rapidement." },
     { id: "hyperDuration", name: "Rotor temporel", icon: "s", costs: [1, 2, 4, 7], description: "+1,5 seconde d'Hypercadence." },
-    { id: "hyperPulses", name: "Impulsions fantômes", icon: "⚡", costs: [1, 3, 5, 9], description: "+1 impulsion automatique par seconde." }
+    { id: "hyperPulses", name: "Impulsions fantômes", icon: "⚡", costs: [1, 3, 5, 9], description: "+1 impulsion automatique par seconde." },
+    { id: "milestonePlanner", name: "Planificateur de paliers", icon: "⌁", costs: [12], protocol: true, description: "Ajoute l'achat exact jusqu'au prochain palier." },
+    { id: "fluxReserve", name: "Réserve de sécurité", icon: "◇", costs: [8, 16, 28], protocol: true, description: "Protège une réserve de flux contre les achats automatiques." },
+    { id: "autoUpgrades", name: "Collecteur autonome", icon: "↻", costs: [30], protocol: true, description: "Achète automatiquement les améliorations ×2 disponibles." },
+    { id: "errorNotebook", name: "Carnet d'erreurs", icon: "≠", costs: [18], protocol: true, description: "Crée un entraînement court à partir de tes erreurs récentes." },
+    { id: "eventBeacon", name: "Balise de perturbation", icon: "!", costs: [10, 20], protocol: true, description: "Allonge les signaux et renforce leur alerte visuelle et tactile." }
   ];
 
   function workshopById(id) {
@@ -41,7 +47,12 @@
   }
 
   function purchaseQuote(id, owned, requested, available = Infinity) {
-    const limit = requested === "max" ? 10000 : Math.max(0, Number(requested) || 0);
+    const milestone = requested === "milestone" ? nextMilestone(owned) : null;
+    const limit = requested === "max"
+      ? 10000
+      : requested === "milestone"
+        ? Math.max(0, (milestone || owned) - owned)
+        : Math.max(0, Number(requested) || 0);
     let quantity = 0;
     let cost = 0;
     while (quantity < limit) {
@@ -85,11 +96,33 @@
     };
   }
 
-  function workshopProduction(id, count, mastery = 0, upgradeLevel = 0) {
+  function workshopSupportBonus(id, count, mastery = 0) {
+    const index = WORKSHOPS.findIndex(workshop => workshop.id === id);
+    if (index < 0 || index >= WORKSHOPS.length - 1 || count <= 0) return 0;
+    const milestoneBonus = unlockedMilestoneCount(count) * SYNERGY_PER_MILESTONE;
+    const masteryBonus = Math.min(0.06, Math.sqrt(Math.max(0, mastery)) * 0.01);
+    return milestoneBonus + masteryBonus;
+  }
+
+  function workshopSynergyMultiplier(id, workshops = {}, mastery = {}) {
+    const targetIndex = WORKSHOPS.findIndex(workshop => workshop.id === id);
+    if (targetIndex <= 0) return 1;
+    const support = WORKSHOPS
+      .slice(0, targetIndex)
+      .reduce((total, workshop) => total + workshopSupportBonus(
+        workshop.id,
+        workshops[workshop.id] || 0,
+        mastery[workshop.id] || 0
+      ), 0);
+    return 1 + support;
+  }
+
+  function workshopProduction(id, count, mastery = 0, upgradeLevel = 0, workshops = null, allMastery = null) {
     const workshop = workshopById(id);
     if (!workshop || count <= 0) return 0;
     const masteryMultiplier = 1 + Math.sqrt(Math.max(0, mastery)) * 0.06;
-    return workshop.baseRate * count * milestoneMultiplier(count, upgradeLevel) * masteryMultiplier;
+    const synergyMultiplier = workshops ? workshopSynergyMultiplier(id, workshops, allMastery || {}) : 1;
+    return workshop.baseRate * count * milestoneMultiplier(count, upgradeLevel) * masteryMultiplier * synergyMultiplier;
   }
 
   function baseProduction(workshops = {}, mastery = {}, workshopUpgrades = {}) {
@@ -97,7 +130,9 @@
       workshop.id,
       workshops[workshop.id] || 0,
       mastery[workshop.id] || 0,
-      workshopUpgrades[workshop.id] || 0
+      workshopUpgrades[workshop.id] || 0,
+      workshops,
+      mastery
     ), 0);
   }
 
@@ -143,17 +178,33 @@
     };
   }
 
+  function comfortStats(levels = {}) {
+    const reserveLevel = Math.min(3, Math.max(0, levels.fluxReserve || 0));
+    const beaconLevel = Math.min(2, Math.max(0, levels.eventBeacon || 0));
+    return {
+      milestonePlanner: (levels.milestonePlanner || 0) > 0,
+      autoUpgrades: (levels.autoUpgrades || 0) > 0,
+      errorNotebook: (levels.errorNotebook || 0) > 0,
+      reserveSeconds: [0, 30, 90, 180][reserveLevel],
+      eventWindowMs: [30000, 45000, 60000][beaconLevel],
+      eventBeaconLevel: beaconLevel
+    };
+  }
+
   function decayHyperCharge(charge = 0, idleForMs = 0, deltaSeconds = 0, levels = {}) {
     const stats = hyperStats(levels);
     if (idleForMs <= stats.idleDelayMs) return Math.max(0, charge);
     return Math.max(0, charge - stats.decayPerSecond * Math.max(0, deltaSeconds));
   }
 
-  function clickGain(totalClicks = 0, workshops = {}, calibration = 0, calibrationUpgrades = {}) {
+  function clickGain(totalClicks = 0, workshops = {}, calibration = 0, calibrationUpgrades = {}, passiveProduction = 0) {
     const practicePower = 1 + Math.floor(Math.max(0, totalClicks) / 250);
     const networkPower = 1 + Math.floor(totalOwned(workshops) / 10);
     const coreMultiplier = 1 + Math.min(4, Math.max(0, calibrationUpgrades.corePower || 0)) * 0.25;
-    return practicePower * networkPower * permanentMultiplier(calibration) * coreMultiplier;
+    const permanent = permanentMultiplier(calibration);
+    const incrementalPower = practicePower * networkPower * permanent * coreMultiplier;
+    const productionAnchor = Math.max(0, passiveProduction) * permanent * 0.25 * coreMultiplier;
+    return Math.max(incrementalPower, productionAnchor);
   }
 
   function cycleTarget(cycle = 1) {
@@ -168,6 +219,7 @@
     WORKSHOPS,
     MILESTONES,
     WORKSHOP_UPGRADE_SECONDS,
+    SYNERGY_PER_MILESTONE,
     CALIBRATION_UPGRADES,
     workshopById,
     workshopCost,
@@ -177,6 +229,8 @@
     nextMilestone,
     workshopUpgradeCost,
     workshopUpgradeStatus,
+    workshopSupportBonus,
+    workshopSynergyMultiplier,
     workshopProduction,
     baseProduction,
     permanentMultiplier,
@@ -186,6 +240,7 @@
     calibrationSpent,
     availableCalibration,
     hyperStats,
+    comfortStats,
     decayHyperCharge,
     clickGain,
     cycleTarget,

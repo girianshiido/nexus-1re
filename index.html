@@ -20,7 +20,7 @@
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon-64.png">
     <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
-    <link rel="stylesheet" href="styles.css?v=19">
+    <link rel="stylesheet" href="styles.css?v=21">
   </head>
   <body>
     <div class="ambient ambient-a"></div>
@@ -128,12 +128,13 @@
           <div>
             <p class="eyebrow">Production passive</p>
             <h2 id="shop-title">Ateliers mathématiques</h2>
-            <p>Chaque unité produit du flux. Les paliers débloquent des bonus ×2 dans l'onglet Améliorations.</p>
+            <p>Chaque unité produit du flux. Les paliers débloquent des bonus ×2 et renforcent tous les ateliers suivants.</p>
           </div>
           <div class="bulk-picker" aria-label="Quantité à acheter">
             <button class="bulk-button active" data-bulk="1" type="button">×1</button>
             <button class="bulk-button" data-bulk="10" type="button">×10</button>
             <button class="bulk-button" data-bulk="max" type="button">MAX</button>
+            <button id="milestone-bulk-button" class="bulk-button" data-bulk="milestone" type="button" hidden>PALIER</button>
           </div>
         </div>
         <div id="workshop-list" class="workshop-list"></div>
@@ -190,6 +191,7 @@
               <div class="learning-actions">
                 <button id="diagnostic-button" class="secondary-button" type="button">Diagnostic · 12 questions</button>
                 <button id="review-button" class="primary-button" type="button">Réviser maintenant · 6 questions</button>
+                <button id="mistake-button" class="secondary-button" type="button" hidden>Carnet d'erreurs</button>
                 <button id="exam-button" class="secondary-button" type="button">Automatismes épreuve · 12 QCM</button>
               </div>
             </div>
@@ -287,8 +289,21 @@
           <div><p class="eyebrow">Améliorations permanentes</p><h2>Protocoles du Noyau</h2></div>
           <span id="calibration-available">0 pt disponible</span>
         </div>
-        <p class="programme-summary">Ces améliorations restent actives après un étalonnage. Choisis entre puissance de clic, Hypercadence et impulsions automatiques.</p>
+        <p class="programme-summary">Ces améliorations restent actives après un étalonnage. Dépenser les points ne réduit jamais ton multiplicateur permanent.</p>
+        <div class="protocol-tabs" role="tablist" aria-label="Types de protocoles">
+          <button class="active" data-protocol-view="power" type="button" role="tab" aria-selected="true">Puissance</button>
+          <button data-protocol-view="comfort" type="button" role="tab" aria-selected="false">Confort</button>
+        </div>
         <div id="calibration-upgrade-list" class="calibration-upgrade-list"></div>
+        <section id="comfort-controls" class="comfort-controls" hidden>
+          <div>
+            <p class="eyebrow">Réglages acquis</p>
+            <h3>Automatismes de confort</h3>
+          </div>
+          <button id="auto-upgrades-toggle" class="comfort-toggle" type="button" hidden aria-pressed="false"></button>
+          <button id="reserve-toggle" class="comfort-toggle" type="button" hidden aria-pressed="false"></button>
+          <button id="event-alert-toggle" class="comfort-toggle" type="button" hidden aria-pressed="false"></button>
+        </section>
       </div>
     </dialog>
 
@@ -308,7 +323,7 @@
 
     <script src="question-engine.js?v=23"></script>
     <script src="learning-model.js?v=1"></script>
-    <script src="game-model.js?v=3"></script>
-    <script src="app.js?v=17"></script>
+    <script src="game-model.js?v=4"></script>
+    <script src="app.js?v=19"></script>
   </body>
 </html>

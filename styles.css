@@ -319,6 +319,7 @@ button:not(:disabled) { cursor: pointer; }
 .workshop-info p { margin-top: 4px; color: var(--muted); font-size: 10px; line-height: 1.4; }
 .workshop-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 7px; color: var(--muted); font-size: 9px; }
 .workshop-meta b { color: var(--green); }
+.workshop-synergy { color: var(--cyan); font-weight: 800; }
 .workshop-buy { min-width: 96px; padding: 10px 10px; border: 1px solid rgba(255, 206, 92, 0.82); border-radius: 11px; color: #281b03; background: linear-gradient(145deg, #ffe98b, #f6b840); box-shadow: 0 5px 16px rgba(239, 171, 45, 0.22), inset 0 1px rgba(255, 255, 255, 0.5); font-size: 10px; font-weight: 900; text-shadow: 0 1px rgba(255, 255, 255, 0.28); transition: transform 140ms ease, filter 140ms ease, box-shadow 140ms ease; }
 .workshop-buy span, .workshop-buy small { display: block; }
 .workshop-buy small { margin-top: 2px; color: rgba(40, 27, 3, 0.74); font-size: 9px; }
@@ -842,6 +843,15 @@ dialog::backdrop { background: rgba(1, 9, 14, 0.82); backdrop-filter: blur(8px);
 .event-time-track { display: block; width: 100%; height: 4px; overflow: hidden; border-radius: 99px; background: rgba(255, 186, 107, 0.15); }
 .event-time-track span { display: block; width: 100%; height: 100%; border-radius: inherit; background: var(--orange); }
 .event-card .primary-button { white-space: nowrap; }
+.event-card.beacon {
+  border-color: rgba(255, 206, 92, 0.72);
+  animation: beacon-pulse 1.7s ease-in-out infinite;
+}
+
+@keyframes beacon-pulse {
+  0%, 100% { box-shadow: 0 18px 55px rgba(0, 0, 0, 0.42), 0 0 0 rgba(255, 186, 107, 0); }
+  50% { box-shadow: 0 18px 55px rgba(0, 0, 0, 0.42), 0 0 26px rgba(255, 186, 107, 0.28); }
+}
 
 .calibration-dialog-card { width: min(760px, 100%); }
 #calibration-dialog { width: min(800px, calc(100% - 28px)); }
@@ -856,6 +866,64 @@ dialog::backdrop { background: rgba(1, 9, 14, 0.82); backdrop-filter: blur(8px);
 .calibration-dialog-card .calibration-upgrade div > small { font-size: 9px; }
 .calibration-dialog-card .calibration-upgrade button { padding: 9px; font-size: 10px; }
 .calibration-dialog-card .calibration-upgrade button small { font-size: 8px; }
+.protocol-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+  margin: 0 0 12px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(4, 18, 27, 0.7);
+}
+.protocol-tabs button {
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 8px;
+  color: var(--muted);
+  background: transparent;
+  font-size: 10px;
+  font-weight: 900;
+}
+.protocol-tabs button.active { color: #062027; background: var(--cyan); }
+.calibration-group-title {
+  grid-column: 1 / -1;
+  margin: 10px 0 0;
+  color: var(--violet);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.comfort-protocol { border-color: rgba(255, 186, 107, 0.2); }
+.comfort-protocol .calibration-icon { color: var(--orange); background: rgba(255, 186, 107, 0.08); }
+.comfort-controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+  margin-top: 18px;
+  padding-top: 17px;
+  border-top: 1px solid var(--line);
+}
+.comfort-controls > div { grid-column: 1 / -1; }
+.comfort-controls h3, .comfort-controls .eyebrow { margin: 0; }
+.comfort-controls h3 { margin-top: 3px; font-size: 15px; }
+.comfort-toggle {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 3px 8px;
+  min-height: 70px;
+  padding: 11px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--text);
+  text-align: left;
+  background: rgba(4, 20, 29, 0.58);
+}
+.comfort-toggle span { font-size: 10px; font-weight: 900; }
+.comfort-toggle small { grid-column: 1 / -1; color: var(--muted); font-size: 8px; line-height: 1.35; }
+.comfort-toggle b { color: var(--muted); font-size: 8px; }
+.comfort-toggle.active { border-color: rgba(120, 230, 163, 0.5); background: rgba(120, 230, 163, 0.08); }
+.comfort-toggle.active b { color: var(--green); }
 
 footer { width: min(1180px, calc(100% - 32px)); margin-top: 15px; padding-bottom: 22px; }
 
@@ -910,6 +978,7 @@ footer { width: min(1180px, calc(100% - 32px)); margin-top: 15px; padding-bottom
   .learning-columns { grid-template-columns: 1fr; }
   .network-reset-button { display: block; }
   .calibration-dialog-card .calibration-upgrade-list { grid-template-columns: 1fr; }
+  .comfort-controls { grid-template-columns: 1fr; }
 
   .event-card { top: calc(env(safe-area-inset-top, 0px) + 62px); }
   .roadmap { display: none; }
@@ -939,6 +1008,8 @@ footer { width: min(1180px, calc(100% - 32px)); margin-top: 15px; padding-bottom
   .upgrades-heading .secondary-button, .network-heading .secondary-button { width: 100%; margin-top: 14px; }
   .upgrade-card { grid-template-columns: 42px minmax(0, 1fr); }
   .upgrade-card-action { grid-column: 1 / -1; text-align: center; }
+  .bulk-picker { flex-wrap: wrap; }
+  .bulk-button { min-width: 44px; padding-inline: 8px; }
 
   .network-cycle { grid-template-columns: 1fr; padding: 14px; }
   .network-cycle-head { display: grid; gap: 5px; }

@@ -35,6 +35,10 @@ assert.match(app, /isDoubleTap/, "le double tap iOS doit être intercepté sans 
 assert.match(app, /questionReports/, "les questions signalées doivent être mémorisées localement");
 assert.match(app, /buyWorkshopUpgrade/, "les améliorations d'atelier doivent être achetables");
 assert.match(app, /buyCalibrationUpgrade/, "les points d'étalonnage doivent financer des améliorations permanentes");
+assert.match(app, /runAutomation/, "le collecteur autonome doit acheter les améliorations d'atelier");
+assert.match(app, /protectedFlux/, "la réserve doit protéger du flux contre l'automatisation");
+assert.match(app, /recentMistakes/, "le carnet d'erreurs doit mémoriser les notions manquées");
+assert.match(app, /navigator\.vibrate/, "la balise de perturbation doit pouvoir produire une alerte tactile");
 assert.match(app, /createProgrammeCoverage/, "la grille du programme 2026 doit être affichée dans le jeu");
 assert.match(app, /renderQuestionCanvases/, "les lectures graphiques doivent être dessinées dans le navigateur");
 assert.match(app, /clickValue\(\) \* \(hyper \? stats\.multiplier : 1\) \* boostMultiplier\(\)/, "les bonus de production et d'Hypercadence doivent se cumuler sur un clic");
@@ -42,7 +46,8 @@ assert.match(app, /clickValue\(\) \* hyperStats\(\)\.pulsesPerSecond \* boost/, 
 assert.match(app, /renderMathText/, "les formules doivent être rendues dans des groupes insécables");
 assert.match(app, /SUBSCRIPT_CHARACTERS/, "les indices doivent être redessinés avec la police du jeu");
 assert.match(styles, /\.math-inline[^]*white-space:\s*nowrap/, "une formule ne doit pas être coupée à l'intérieur sur mobile");
-assert.equal((html.match(/role="tab"/g) || []).length, 4, "quatre onglets doivent séparer le noyau, les ateliers, les améliorations et le réseau");
+assert.equal((html.match(/data-tab="[^"]+"[^>]*role="tab"/g) || []).length, 4, "quatre onglets doivent séparer le noyau, les ateliers, les améliorations et le réseau");
+assert.equal((html.match(/data-protocol-view="[^"]+"/g) || []).length, 2, "les protocoles doivent être séparés entre puissance et confort");
 assert.match(app, /EVENT_WINDOW_MS/, "les perturbations doivent avoir une durée de disponibilité limitée");
 assert.match(app, /workshopReveal/, "les ateliers doivent être révélés progressivement");
 assert.match(styles, /#event-next:not\(\[hidden\]\)[^]*position:\s*fixed/, "l'action de fin d'intervention doit rester visible");
@@ -53,6 +58,8 @@ assert.match(html, /Diagnostic · 12 questions/, "le diagnostic adaptatif doit �
 assert.match(html, /Automatismes épreuve · 12 QCM/, "le mode automatismes de l'épreuve doit être accessible");
 assert.match(app, /recordAnswer/, "chaque réponse doit alimenter le modèle d'apprentissage");
 assert.match(app, /startLearningSession/, "les parcours ciblés doivent être câblés");
+assert.match(html, /id="milestone-bulk-button"/, "l'achat jusqu'au prochain palier doit avoir une commande dédiée");
+assert.match(html, /id="mistake-button"/, "le carnet d'erreurs doit être accessible depuis le parcours adaptatif");
 assert.match(learning, /remedialAt/, "une erreur doit programmer une reprise différée");
 assert.match(learning, /stageFor/, "les niveaux de consolidation doivent être calculés");
 assert.match(html, /Programme de première technologique 2026/, "le dialogue de couverture 2026 doit être présent");
