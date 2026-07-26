@@ -38,6 +38,7 @@ assert.match(app, /buyCalibrationUpgrade/, "les points d'étalonnage doivent fin
 assert.match(app, /cycleGain\(state\.lifetimeFlux, state\.calibration\)/, "les points doivent dépendre de la production cumulée et du capital déjà obtenu");
 assert.doesNotMatch(app, /cycleGain\(state\.cycleFlux/, "le flux du seul cycle ne doit plus permettre de multiplier les points");
 assert.match(html, /flux produit depuis le début/, "l'interface doit expliquer la progression cumulative de l'étalonnage");
+assert.match(app, /Model\.formatCompactNumber/, "les grands nombres doivent employer les unités étendues du jeu");
 assert.match(app, /runAutomation/, "le collecteur autonome doit acheter les améliorations d'atelier");
 assert.match(app, /protectedFlux/, "la réserve doit protéger du flux contre l'automatisation");
 assert.match(app, /recentMistakes/, "le carnet d'erreurs doit mémoriser les notions manquées");

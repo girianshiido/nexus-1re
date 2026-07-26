@@ -133,6 +133,13 @@ const delayedFlux = model.CALIBRATION_FLUX_BASE * 10 ** model.CALIBRATION_FLUX_E
 const delayedCalibration = model.cycleGain(delayedFlux, 0);
 assert.equal(frequentCalibration, delayedCalibration, "redémarrer souvent ou tard doit donner le même capital à production cumulée égale");
 assert.equal(model.calibrationPotential(model.CALIBRATION_FLUX_BASE * 200 ** 4), 200);
+assert.match(model.formatCompactNumber(1e12), /^1\sBn$/);
+assert.match(model.formatCompactNumber(1e15), /^1\sBd$/, "un billiard ne doit pas être affiché comme 1 000 billions");
+assert.match(model.formatCompactNumber(1e18), /^1\sTn$/, "le trillion doit suivre le billiard");
+assert.match(model.formatCompactNumber(1e21), /^1\sTd$/);
+assert.match(model.formatCompactNumber(1e30), /^1\sQi$/);
+assert.doesNotMatch(model.formatCompactNumber(1e15), /1000\s*Bn/);
+assert.equal(model.formatCompactNumber(1e63), "1 e63", "au-delà des unités nommées, la notation d'ingénieur doit prendre le relais");
 
 const minimumCoreFlux = model.WORKSHOPS
   .slice(0, model.CORE_WORKSHOP_COUNT)

@@ -34,6 +34,28 @@
   const SYNERGY_PER_MILESTONE = 0.08;
   const CALIBRATION_FLUX_BASE = 50000;
   const CALIBRATION_FLUX_EXPONENT = 4;
+  const COMPACT_NUMBER_UNITS = [
+    { value: 1e60, suffix: "Dc" },
+    { value: 1e57, suffix: "Nod" },
+    { value: 1e54, suffix: "No" },
+    { value: 1e51, suffix: "Ocd" },
+    { value: 1e48, suffix: "Oc" },
+    { value: 1e45, suffix: "Spd" },
+    { value: 1e42, suffix: "Sp" },
+    { value: 1e39, suffix: "Sxd" },
+    { value: 1e36, suffix: "Sx" },
+    { value: 1e33, suffix: "Qid" },
+    { value: 1e30, suffix: "Qi" },
+    { value: 1e27, suffix: "Qad" },
+    { value: 1e24, suffix: "Qa" },
+    { value: 1e21, suffix: "Td" },
+    { value: 1e18, suffix: "Tn" },
+    { value: 1e15, suffix: "Bd" },
+    { value: 1e12, suffix: "Bn" },
+    { value: 1e9, suffix: "Md" },
+    { value: 1e6, suffix: "M" },
+    { value: 1e3, suffix: "k" }
+  ];
   const CALIBRATION_UPGRADES = [
     { id: "corePower", name: "Noyau renforcé", icon: "+", costs: [1, 2, 4, 7], description: "+25 % de flux par clic et par niveau." },
     { id: "hyperPower", name: "Amplificateur", icon: "×", costs: [1, 2, 3, 5, 8, 12], description: "+0,5 au multiplicateur d'Hypercadence." },
@@ -246,6 +268,35 @@
     return Math.max(incrementalPower, productionAnchor);
   }
 
+  function formatCompactNumber(value, maximumFractionDigits = 2) {
+    if (!Number.isFinite(value)) return "∞";
+    const absolute = Math.abs(value);
+    if (absolute < 1000) {
+      return new Intl.NumberFormat("fr-FR", { maximumFractionDigits }).format(value);
+    }
+    let unit = COMPACT_NUMBER_UNITS.find(candidate => absolute >= candidate.value);
+    if (!unit) {
+      const exponent = Math.floor(Math.log10(absolute) / 3) * 3;
+      const scaled = value / Math.pow(10, exponent);
+      return `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits }).format(scaled)} e${exponent}`;
+    }
+    const unitIndex = COMPACT_NUMBER_UNITS.indexOf(unit);
+    const scaledAbsolute = absolute / unit.value;
+    const roundedScaled = Math.round(scaledAbsolute * Math.pow(10, maximumFractionDigits))
+      / Math.pow(10, maximumFractionDigits);
+    if (roundedScaled >= 1000) {
+      if (unitIndex > 0) {
+        unit = COMPACT_NUMBER_UNITS[unitIndex - 1];
+      } else {
+        const exponent = Math.floor(Math.log10(absolute) / 3) * 3;
+        const engineeringValue = value / Math.pow(10, exponent);
+        return `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits }).format(engineeringValue)} e${exponent}`;
+      }
+    }
+    const scaled = value / unit.value;
+    return `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits }).format(scaled)} ${unit.suffix}`;
+  }
+
   function calibrationPotential(lifetimeFlux = 0) {
     const ratio = Math.max(0, lifetimeFlux) / CALIBRATION_FLUX_BASE;
     return Math.floor(Math.pow(ratio, 1 / CALIBRATION_FLUX_EXPONENT) + 1e-9);
@@ -278,6 +329,7 @@
     SYNERGY_PER_MILESTONE,
     CALIBRATION_FLUX_BASE,
     CALIBRATION_FLUX_EXPONENT,
+    COMPACT_NUMBER_UNITS,
     CALIBRATION_UPGRADES,
     workshopById,
     workshopCost,
@@ -304,6 +356,7 @@
     comfortStats,
     decayHyperCharge,
     clickGain,
+    formatCompactNumber,
     calibrationPotential,
     cycleTarget,
     cycleProgress,

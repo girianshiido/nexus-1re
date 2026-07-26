@@ -319,7 +319,7 @@
     const absolute = Math.abs(value);
     const digits = options.digits ?? (absolute < 10 ? 1 : 0);
     if (absolute < 1000) return new Intl.NumberFormat("fr-FR", { maximumFractionDigits: digits }).format(value);
-    return new Intl.NumberFormat("fr-FR", { notation: "compact", maximumFractionDigits: 2 }).format(value);
+    return Model.formatCompactNumber(value);
   }
 
   function plural(value, singular, pluralForm = `${singular}s`) {
