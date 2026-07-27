@@ -237,8 +237,13 @@
 
     <footer>
       <span>Programme de première technologique · BO du 2 avril 2026</span>
-      <button id="reset-button" class="text-button" type="button">Réinitialiser la partie</button>
+      <div class="save-actions" aria-label="Sauvegarde de la partie">
+        <button id="export-save-button" class="text-button" type="button">Exporter la partie</button>
+        <button id="import-save-button" class="text-button" type="button">Importer une partie</button>
+        <button id="reset-button" class="text-button" type="button">Réinitialiser la partie</button>
+      </div>
     </footer>
+    <input id="import-save-file" type="file" accept="application/json,.json" hidden>
 
     <dialog id="event-dialog">
       <div class="dialog-card event-dialog-card">
@@ -353,6 +358,6 @@
     <script src="question-engine.js?v=28"></script>
     <script src="learning-model.js?v=1"></script>
     <script src="game-model.js?v=7"></script>
-    <script src="app.js?v=26"></script>
+    <script src="app.js?v=27"></script>
   </body>
 </html>

@@ -11,6 +11,9 @@
   const MAX_QUESTION_TIME = 20000;
   const OFFLINE_LIMIT = 4 * 60 * 60;
   const REPORT_LIMIT = 50;
+  const SAVE_EXPORT_FORMAT = "nexus-1re-save";
+  const SAVE_EXPORT_VERSION = 1;
+  const MAX_IMPORT_SIZE = 2 * 1024 * 1024;
   const EVENT_WINDOW_MS = 30000;
   const TIME_API_URL = "https://gettimeapi.dev/v1/time?timezone=UTC";
   const TIME_SYNC_TIMEOUT = 4500;
@@ -168,6 +171,9 @@
     learningWorkshops: $("#learning-workshops"),
     resetButton: $("#reset-button"),
     resetMobileButton: $("#reset-mobile-button"),
+    exportSaveButton: $("#export-save-button"),
+    importSaveButton: $("#import-save-button"),
+    importSaveFile: $("#import-save-file"),
     comfortControls: $("#comfort-controls"),
     autoUpgradesToggle: $("#auto-upgrades-toggle"),
     reserveToggle: $("#reserve-toggle"),
@@ -239,11 +245,10 @@
     };
   }
 
-  function loadState() {
+  function normalizeState(parsed) {
     const initial = freshState();
     try {
-      const parsed = JSON.parse(localStorage.getItem(SAVE_KEY));
-      if (!parsed || parsed.version !== 2) return initial;
+      if (!parsed || parsed.version !== 2) return null;
       const merged = { ...initial, ...parsed };
       merged.workshops = { ...initial.workshops, ...(parsed.workshops || {}) };
       merged.workshopUpgrades = { ...initial.workshopUpgrades, ...(parsed.workshopUpgrades || {}) };
@@ -289,7 +294,15 @@
       }
       return merged;
     } catch {
-      return initial;
+      return null;
+    }
+  }
+
+  function loadState() {
+    try {
+      return normalizeState(JSON.parse(localStorage.getItem(SAVE_KEY))) || freshState();
+    } catch {
+      return freshState();
     }
   }
 
@@ -300,6 +313,7 @@
   let questionStartedAt = 0;
   let currentAnswered = false;
   let confirmMode = null;
+  let pendingImportedState = null;
   let toastTimer = 0;
   let audioContext = null;
   let lastFrame = performance.now();
@@ -411,6 +425,70 @@
     const verifiedTime = trustedNow();
     if (verifiedTime !== null) state.lastSeen = verifiedTime;
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch { /* sauvegarde indisponible */ }
+  }
+
+  function exportSave() {
+    const exportedAt = new Date().toISOString();
+    const payload = {
+      format: SAVE_EXPORT_FORMAT,
+      exportVersion: SAVE_EXPORT_VERSION,
+      exportedAt,
+      state
+    };
+    const blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `nexus-1re-partie-${exportedAt.slice(0, 10)}.json`;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+    showToast("Partie exportée. Conserve ce fichier pour la restaurer sur un autre ordinateur.");
+  }
+
+  function applyImportedState(imported) {
+    state = imported;
+    state.lastSeen = trustedNow() ?? Date.now();
+    pendingEvent = null;
+    eventRun = null;
+    currentQuestion = null;
+    currentAnswered = false;
+    refreshMasteryScores();
+    renderSpecialityState();
+    setActiveTab(state.activeTab, { moveToTop: false });
+    updateSoundButton();
+    document.querySelectorAll(".bulk-button").forEach(button => button.classList.toggle("active", button.dataset.bulk === String(state.bulk)));
+    renderWorkshops();
+    renderWorkshopUpgrades();
+    renderCalibrationUpgrades();
+    renderLearning();
+    render();
+    save();
+    showToast("Partie importée avec succès.");
+  }
+
+  async function prepareImport(file) {
+    if (!file) return;
+    if (file.size > MAX_IMPORT_SIZE) {
+      showToast("Ce fichier est trop volumineux pour être une sauvegarde NEXUS.");
+      return;
+    }
+    try {
+      const payload = JSON.parse(await file.text());
+      if (
+        !payload
+        || payload.format !== SAVE_EXPORT_FORMAT
+        || payload.exportVersion !== SAVE_EXPORT_VERSION
+        || !payload.state
+        || payload.state.version !== 2
+      ) throw new Error("format invalide");
+      const imported = normalizeState(payload.state);
+      if (!imported) throw new Error("sauvegarde invalide");
+      pendingImportedState = imported;
+      showConfirm("import-save");
+    } catch {
+      pendingImportedState = null;
+      showToast("Import impossible : choisis un fichier de sauvegarde NEXUS valide.");
+    }
   }
 
   function applyOfflineProgress(throughTime = trustedNow()) {
@@ -1324,6 +1402,11 @@
       dom.confirmTitle.textContent = isExam ? "Quitter l'épreuve ?" : "Quitter l'entraînement ?";
       dom.confirmText.textContent = "La session ne donnera pas de bilan. Les réponses déjà envoyées restent toutefois prises en compte dans ta progression.";
       dom.confirmAction.textContent = isExam ? "Quitter l'épreuve" : "Quitter l'entraînement";
+    } else if (mode === "import-save") {
+      dom.confirmKicker.textContent = "Importation de partie";
+      dom.confirmTitle.textContent = "Remplacer la partie actuelle ?";
+      dom.confirmText.textContent = "La progression actuellement enregistrée sur cet ordinateur sera remplacée par celle du fichier. Tu peux d'abord l'exporter si tu souhaites la conserver.";
+      dom.confirmAction.textContent = "Importer cette partie";
     } else {
       dom.confirmKicker.textContent = "Réinitialisation";
       dom.confirmTitle.textContent = "Effacer cette partie ?";
@@ -1936,6 +2019,13 @@
   dom.cycleButton.addEventListener("click", () => showConfirm("cycle"));
   dom.resetButton.addEventListener("click", () => showConfirm("reset"));
   dom.resetMobileButton.addEventListener("click", () => showConfirm("reset"));
+  dom.exportSaveButton.addEventListener("click", exportSave);
+  dom.importSaveButton.addEventListener("click", () => dom.importSaveFile.click());
+  dom.importSaveFile.addEventListener("change", async () => {
+    const [file] = dom.importSaveFile.files;
+    dom.importSaveFile.value = "";
+    await prepareImport(file);
+  });
   dom.confirmAction.addEventListener("click", event => {
     event.preventDefault();
     const action = confirmMode;
@@ -1944,11 +2034,20 @@
     if (action === "cycle") startNewCycle();
     if (action === "reset") resetGame();
     if (action === "quit-session") abandonLearningSession();
+    if (action === "import-save" && pendingImportedState) {
+      const imported = pendingImportedState;
+      pendingImportedState = null;
+      applyImportedState(imported);
+    }
   });
   dom.confirmDialog.addEventListener("close", () => {
     if (confirmMode === "quit-session" && eventRun && !eventRun.finished) {
       confirmMode = null;
       dom.eventDialog.showModal();
+    }
+    if (confirmMode === "import-save") {
+      confirmMode = null;
+      pendingImportedState = null;
     }
   });
   [

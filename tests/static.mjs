@@ -78,6 +78,12 @@ assert.match(app, /coreSkills/, "le mode épreuve anticipée doit rester limité
 assert.match(styles, /@keyframes speciality-reveal/, "l'ouverture du nouveau secteur doit être mise en scène");
 assert.match(styles, /#event-next:not\(\[hidden\]\)[^]*position:\s*fixed/, "l'action de fin d'intervention doit rester visible");
 assert.match(html, /id="reset-mobile-button"/, "la réinitialisation doit être disponible dans l'onglet Réseau sur mobile");
+assert.match(html, /id="export-save-button"/, "la partie doit pouvoir être exportée depuis la version ordinateur");
+assert.match(html, /id="import-save-button"/, "une partie exportée doit pouvoir être importée depuis la version ordinateur");
+assert.match(html, /id="import-save-file"[^>]*accept="application\/json,.json"/, "l'import doit limiter le sélecteur aux fichiers de sauvegarde JSON");
+assert.match(app, /SAVE_EXPORT_FORMAT/, "les exports doivent employer un format explicitement identifié");
+assert.match(app, /prepareImport/, "les fichiers importés doivent être validés avant de remplacer la partie");
+assert.match(app, /Remplacer la partie actuelle/, "l'import doit demander confirmation avant d'écraser la sauvegarde locale");
 assert.equal((html.match(/id="calibration-open-upgrades"/g) || []).length, 1, "les protocoles permanents doivent avoir un seul point d'accès");
 assert.doesNotMatch(html, /calibration-open-network|id="calibration-open"/, "les protocoles ne doivent pas être dupliqués dans le Réseau ou la barre de cycle");
 assert.match(html, /Diagnostic · 12 questions/, "le diagnostic adaptatif doit être accessible");
