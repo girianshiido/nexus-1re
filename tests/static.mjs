@@ -63,6 +63,7 @@ assert.match(app, /appendVector/, "les vecteurs doivent être surmontés d'une f
 assert.match(styles, /\.math-inline[^]*white-space:\s*nowrap/, "une formule ne doit pas être coupée à l'intérieur sur mobile");
 assert.match(styles, /\.math-radicand[^}]*border-top/, "le trait d'une racine doit recouvrir le radicande");
 assert.match(styles, /\.math-fraction[^}]*grid-template-rows/, "les quotients doivent être empilés en fractions");
+assert.match(styles, /\.math-fraction[^}]*vertical-align:\s*middle/, "les fractions doivent être centrées verticalement dans les énoncés et les réponses");
 assert.match(styles, /\.math-vector::before[^}]*content:\s*"→"/, "une flèche doit être dessinée au-dessus des vecteurs");
 assert.equal((html.match(/data-tab="[^"]+"[^>]*role="tab"/g) || []).length, 4, "quatre onglets doivent séparer le noyau, les ateliers, les améliorations et le réseau");
 assert.equal((html.match(/data-protocol-view="[^"]+"/g) || []).length, 2, "les protocoles doivent être séparés entre puissance et confort");
@@ -130,6 +131,7 @@ assert.match(exerciseLabApp, /format \$\{related\.indexOf\(subskill\) \+ 1\}/, "
 assert.doesNotMatch(exerciseLabApp, /\$\{subskill\.label\} — \$\{subskill\.id\}/, "les identifiants techniques anglais ne doivent pas apparaître dans le sélecteur");
 assert.match(exerciseLabStyles, /\.math-radicand[^}]*border-top/, "le laboratoire doit partager le rendu complet des racines");
 assert.match(exerciseLabStyles, /\.math-fraction[^}]*grid-template-rows/, "le laboratoire doit partager le rendu des fractions");
+assert.match(exerciseLabStyles, /\.math-fraction[^}]*vertical-align:\s*middle/, "le laboratoire doit centrer verticalement les fractions");
 assert.match(exerciseLabStyles, /\.math-vector::before[^}]*content:\s*"→"/, "le laboratoire doit partager le rendu des vecteurs");
 
 const manifest = JSON.parse(manifestText);
