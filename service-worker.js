@@ -1,4 +1,4 @@
-const CACHE_NAME = "nexus-laboratoire-v47";
+const CACHE_NAME = "nexus-laboratoire-v48";
 const APP_SHELL = [
   "./index.html",
   "./styles.css?v=23",
@@ -6,6 +6,9 @@ const APP_SHELL = [
   "./learning-model.js?v=1",
   "./game-model.js?v=9",
   "./app.js?v=28",
+  "./exerciseurs/index.html",
+  "./exerciseurs/styles.css?v=1",
+  "./exerciseurs/app.js?v=1",
   "./manifest.webmanifest",
   "./assets/favicon-64.png",
   "./assets/apple-touch-icon.png",
@@ -35,12 +38,14 @@ self.addEventListener("fetch", event => {
     return;
   }
   if (event.request.mode === "navigate") {
+    const isExerciseLab = new URL(event.request.url).pathname.includes("/exerciseurs");
+    const fallback = isExerciseLab ? "./exerciseurs/index.html" : "./index.html";
     event.respondWith(
       fetch(new Request(event.request, { cache: "reload" })).then(response => {
         const copy = response.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put("./index.html", copy));
+        caches.open(CACHE_NAME).then(cache => cache.put(fallback, copy));
         return response;
-      }).catch(() => caches.match("./index.html"))
+      }).catch(() => caches.match(fallback))
     );
     return;
   }

@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#061521">
+    <meta name="robots" content="noindex, nofollow">
+    <title>NEXUS 1re — Laboratoire des exerciseurs</title>
+    <link rel="icon" type="image/png" sizes="64x64" href="../assets/favicon-64.png">
+    <link rel="stylesheet" href="styles.css?v=1">
+  </head>
+  <body>
+    <div class="ambient ambient-a"></div>
+    <div class="ambient ambient-b"></div>
+
+    <header class="lab-topbar">
+      <a class="lab-brand" href="../" aria-label="Retourner au jeu NEXUS 1re">
+        <span class="lab-brand-mark" aria-hidden="true">N</span>
+        <span><small>NEXUS 1re</small><strong>Laboratoire des exerciseurs</strong></span>
+      </a>
+      <div class="lab-topbar-status"><span class="status-dot"></span>Même générateur que le jeu</div>
+      <a class="game-link" href="../">← Retour au jeu</a>
+    </header>
+
+    <main class="lab-shell">
+      <section class="lab-intro">
+        <div>
+          <p>Page de contrôle indépendante</p>
+          <h1>Tester chaque exerciseur, sans attendre une perturbation.</h1>
+          <span>Cette page ne modifie ni la sauvegarde, ni la maîtrise, ni l’économie du jeu.</span>
+        </div>
+        <div class="catalog-count" aria-label="Nombre de formats disponibles">
+          <strong id="catalog-total">91</strong><span>formats reliés<br>au générateur</span>
+        </div>
+      </section>
+
+      <div class="lab-layout">
+        <aside class="lab-controls" aria-label="Sélection de l'exerciseur">
+          <section>
+            <div class="section-heading"><span>01</span><h2>Programme</h2></div>
+            <div class="programme-switch" id="programme-switch">
+              <button class="active" type="button" data-programme="all" aria-pressed="true">Tout</button>
+              <button type="button" data-programme="core" aria-pressed="false">Épreuve de 1re</button>
+              <button type="button" data-programme="speciality" aria-pressed="false">1re Spécialité</button>
+            </div>
+          </section>
+          <section>
+            <div class="section-heading"><span>02</span><h2>Atelier</h2></div>
+            <label class="field-label" for="skill-select">Notion travaillée</label>
+            <select id="skill-select"></select>
+          </section>
+          <section>
+            <div class="section-heading"><span>03</span><h2>Exerciseur</h2></div>
+            <label class="field-label" for="kind-select">Format précis</label>
+            <select id="kind-select"></select>
+            <p class="kind-description" id="kind-description"></p>
+            <div class="kind-navigation">
+              <button id="previous-kind" type="button" aria-label="Exerciseur précédent">←</button>
+              <span id="kind-position">Mélange</span>
+              <button id="next-kind" type="button" aria-label="Exerciseur suivant">→</button>
+            </div>
+          </section>
+          <section class="catalog-progress">
+            <div><span>Formats vus</span><strong id="visited-count">0/91</strong></div>
+            <div class="progress-track"><span id="visited-bar"></span></div>
+            <button id="reset-session" class="text-button" type="button">Remettre la session à zéro</button>
+          </section>
+        </aside>
+
+        <section class="lab-workbench" aria-live="polite">
+          <div class="question-meta">
+            <div><span id="question-skill">Atelier</span><strong id="question-kind">format</strong></div>
+            <div class="question-identifiers"><span id="question-origin">Programme</span><code id="question-reference">Réf.</code></div>
+          </div>
+          <article class="question-card">
+            <div id="question-validation" class="validation-chip">Génération valide</div>
+            <div id="question-visual" class="question-visual" hidden></div>
+            <h2 id="question-text" class="question-text"></h2>
+            <div id="answers" class="answers"></div>
+            <section id="feedback" class="feedback" hidden>
+              <div class="feedback-title">
+                <span id="feedback-mark" aria-hidden="true">✓</span>
+                <div><small id="feedback-label">Correction</small><strong id="correct-answer"></strong></div>
+              </div>
+              <p id="explanation"></p>
+            </section>
+            <div class="question-actions">
+              <button id="reveal-answer" class="secondary-button" type="button">Afficher la correction</button>
+              <button id="copy-diagnostic" class="secondary-button" type="button">Copier le diagnostic</button>
+              <button id="new-variant" class="primary-button" type="button">Nouvelle variante <span aria-hidden="true">↻</span></button>
+            </div>
+          </article>
+        </section>
+
+        <aside class="lab-session" aria-label="Statistiques de test">
+          <div class="section-heading"><span>Session</span><h2>Table de contrôle</h2></div>
+          <div class="session-main"><strong id="success-rate">—</strong><span>réussite</span></div>
+          <div class="session-grid">
+            <div><span>Variantes</span><strong id="generated-count">0</strong></div>
+            <div><span>Réponses</span><strong id="answered-count">0</strong></div>
+            <div><span>Justes</span><strong id="correct-count">0</strong></div>
+          </div>
+          <div class="session-note"><span class="status-dot"></span><strong>Session locale</strong><p>Les compteurs sont effacés au rechargement. Aucune donnée n’est envoyée au jeu.</p></div>
+          <div class="shortcuts">
+            <strong>Raccourcis</strong>
+            <span><kbd>1</kbd> à <kbd>4</kbd> répondre</span>
+            <span><kbd>N</kbd> nouvelle variante</span>
+            <span><kbd>→</kbd> exerciseur suivant</span>
+          </div>
+        </aside>
+      </div>
+    </main>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script src="../question-engine.js?v=28"></script>
+    <script src="app.js?v=1"></script>
+  </body>
+</html>

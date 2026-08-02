@@ -1,13 +1,15 @@
 import assert from "node:assert/strict";
 import { access, readFile } from "node:fs/promises";
 
-const [html, app, learning, styles, manifestText, serviceWorker] = await Promise.all([
+const [html, app, learning, styles, manifestText, serviceWorker, exerciseLabHtml, exerciseLabApp] = await Promise.all([
   readFile(new URL("../index.html", import.meta.url), "utf8"),
   readFile(new URL("../app.js", import.meta.url), "utf8"),
   readFile(new URL("../learning-model.js", import.meta.url), "utf8"),
   readFile(new URL("../styles.css", import.meta.url), "utf8"),
   readFile(new URL("../manifest.webmanifest", import.meta.url), "utf8"),
-  readFile(new URL("../service-worker.js", import.meta.url), "utf8")
+  readFile(new URL("../service-worker.js", import.meta.url), "utf8"),
+  readFile(new URL("../exerciseurs/index.html", import.meta.url), "utf8"),
+  readFile(new URL("../exerciseurs/app.js", import.meta.url), "utf8")
 ]);
 
 const ids = new Set([...html.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]));
@@ -15,6 +17,11 @@ assert.equal(ids.size, [...html.matchAll(/\bid="([^"]+)"/g)].length, "les identi
 
 const requiredIds = [...app.matchAll(/\$\("#([^"]+)"\)/g)].map(match => match[1]);
 for (const id of requiredIds) assert.ok(ids.has(id), `élément #${id} manquant dans index.html`);
+
+const exerciseLabIds = new Set([...exerciseLabHtml.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]));
+assert.equal(exerciseLabIds.size, [...exerciseLabHtml.matchAll(/\bid="([^"]+)"/g)].length, "les identifiants du laboratoire doivent être uniques");
+const requiredExerciseLabIds = [...exerciseLabApp.matchAll(/\$\("#([^"]+)"\)/g)].map(match => match[1]);
+for (const id of requiredExerciseLabIds) assert.ok(exerciseLabIds.has(id), `élément #${id} manquant dans exerciseurs/index.html`);
 
 assert.match(html, /question-engine\.js[^]*learning-model\.js[^]*game-model\.js[^]*app\.js/, "les scripts doivent être chargés dans le bon ordre");
 assert.match(html, /viewport-fit=cover/, "la vue mobile doit être configurée");
@@ -101,6 +108,12 @@ assert.match(html, /0\/12/, "les douze ateliers doivent être annoncés dès le 
 assert.match(serviceWorker, /event\.request\.mode === "navigate"/, "les navigations de l'application installée doivent être actualisées en priorité");
 assert.match(serviceWorker, /cache: "reload"/, "le cache HTTP ne doit pas masquer les mises à jour installées");
 assert.match(serviceWorker, /origin !== self\.location\.origin/, "les requêtes vers l'horloge UTC ne doivent pas être mises en cache");
+assert.match(exerciseLabHtml, /Laboratoire des exerciseurs/, "la page autonome de contrôle des exerciseurs doit exister");
+assert.match(exerciseLabHtml, /noindex, nofollow/, "la page de contrôle ne doit pas être proposée aux moteurs de recherche");
+assert.doesNotMatch(html, /exerciseurs/, "le jeu ne doit pas encore contenir de lien vers le laboratoire des exerciseurs");
+assert.match(exerciseLabApp, /Engine\.SUBSKILLS/, "le laboratoire doit énumérer automatiquement tous les exerciseurs du jeu");
+assert.match(exerciseLabApp, /Engine\.generateForKinds/, "le laboratoire doit utiliser le même générateur que le jeu");
+assert.match(exerciseLabApp, /copyDiagnostic/, "le laboratoire doit permettre de copier le diagnostic d'une question");
 
 const manifest = JSON.parse(manifestText);
 assert.equal(manifest.display, "standalone", "le jeu installé doit s'ouvrir en mode autonome");
