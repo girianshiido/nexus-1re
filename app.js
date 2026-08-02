@@ -46,7 +46,8 @@
 
   const SUBSCRIPT_CHARACTERS = { "₀": "0", "₁": "1", "₂": "2", "₃": "3", "₄": "4", "₅": "5", "₆": "6", "₇": "7", "₈": "8", "₉": "9", "₊": "+", "₋": "−", "ₙ": "n" };
   const SUPERSCRIPT_CHARACTERS = { "⁰": "0", "¹": "1", "²": "2", "³": "3", "⁴": "4", "⁵": "5", "⁶": "6", "⁷": "7", "⁸": "8", "⁹": "9", "⁺": "+", "⁻": "−" };
-  const MATH_INLINE_PATTERN = /(?:√?\d+|ρ)\(cos\([^()]+\)\s*\+\s*sin\([^()]+\)i\)|\[(?:√?\d+|ρ)\s*,\s*[^,\]]+\]|(?:cos|sin)\([^()]+\)|P\([^()]*\)(?:\s*=\s*[−-]?\d+(?:[,.]\d+)?)?|u[₀₁₂₃₄₅₆₇₈₉₊₋ₙ]+(?:\s*=\s*(?:u[₀₁₂₃₄₅₆₇₈₉₊₋ₙ]+|[−-]?\d+)(?:\s*[+−-]\s*\d+)?)?|(?:[−-]?\d*)?\(x\s*[+−-]\s*\d+\)(?:\(x\s*[+−-]\s*\d+\))+(?:\s*=\s*0)?|(?:f′?\(x\)|[xy])\s*[=<>≤≥]\s*[−-]?\d+(?:\s+(?:ou|et)\s*[xy]\s*[=<>≤≥]\s*[−-]?\d+)?|\d+\s*×\s*10[⁻⁰¹²³⁴⁵⁶⁷⁸⁹]+/g;
+  const MATH_INLINE_PATTERN = /f′?\(x\)\s*=\s*[−-]?(?:√(?:\([^()]+\)|[A-Za-z]|\d+(?:[,.]\d+)?)|\d*π|\d+(?:[,.]\d+)?|[a-zω])\s*\/\s*(?:\([^()]+\)(?:²|³)?|\d+(?:[,.]\d+)?|[a-zω])|P\([^()]*\)\s*\/\s*P\([^()]*\)|(?:sin|cos)\([^()]+\)\s*\/\s*[a-zω]|norm\(vec\([^)]+\)\)|vec\([^)]+\)\s*·\s*vec\([^)]+\)|\(\s*vec\([^)]+\)\s*,\s*vec\([^)]+\)\s*\)|vec\([^)]+\)|(?:√?\d+|ρ)\(cos\([^()]+\)\s*\+\s*sin\([^()]+\)i\)|\[(?:√?\d+|ρ)\s*,\s*[^,\]]+\]|(?:cos|sin)\([^()]+\)|P\([^()]*\)(?:\s*=\s*[−-]?\d+(?:[,.]\d+)?)?|u[₀₁₂₃₄₅₆₇₈₉₊₋ₙ]+(?:\s*=\s*(?:u[₀₁₂₃₄₅₆₇₈₉₊₋ₙ]+|[−-]?\d+)(?:\s*[+−-]\s*\d+)?)?|(?:[−-]?\d*)?\(x\s*[+−-]\s*\d+\)(?:\(x\s*[+−-]\s*\d+\))+(?:\s*=\s*0)?|(?:f′?\(x\)|[xy])\s*[=<>≤≥]\s*[−-]?\d+(?:\s+(?:ou|et)\s*[xy]\s*[=<>≤≥]\s*[−-]?\d+)?|\d+\s*×\s*10[⁻⁰¹²³⁴⁵⁶⁷⁸⁹]+/g;
+  const MATH_DECORATION_PATTERN = /norm\(vec\(([^)]+)\)\)|vec\(([^)]+)\)|(?<![A-Za-zÀ-ÿ])([−-]?(?:√(?:\([^()]+\)|[A-Za-z]|\d+(?:[,.]\d+)?)|\d*π|\d+(?:[,.]\d+)?|[a-zω]|(?:sin|cos)\([^()]+\)|\([^()]+\)))\s*\/\s*(\([^()]+\)(?:²|³)?|\d+(?:[,.]\d+)?|[a-zω])(?![A-Za-zÀ-ÿ])|√(\([^()]+\)|[A-Za-z]|\d+(?:[,.]\d+)?)/gi;
 
   function appendMathCharacters(target, text) {
     const fragments = String(text).split(/([₀₁₂₃₄₅₆₇₈₉₊₋ₙ]+|[⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻]+)/g);
@@ -65,19 +66,74 @@
     });
   }
 
+  function appendVector(target, label) {
+    const vector = document.createElement("span");
+    vector.className = "math-vector";
+    appendMathCharacters(vector, label);
+    target.append(vector);
+  }
+
+  function appendFraction(target, numerator, denominator) {
+    const fraction = document.createElement("span");
+    fraction.className = "math-fraction";
+    const top = document.createElement("span");
+    const bottom = document.createElement("span");
+    appendDecoratedMath(top, numerator.replace("-", "−"));
+    appendDecoratedMath(bottom, denominator);
+    fraction.append(top, bottom);
+    target.append(fraction);
+  }
+
+  function appendRadical(target, radicand) {
+    const radical = document.createElement("span");
+    radical.className = "math-radical";
+    const sign = document.createElement("span");
+    sign.className = "math-radical-sign";
+    sign.textContent = "√";
+    const content = document.createElement("span");
+    content.className = "math-radicand";
+    appendMathCharacters(content, radicand);
+    radical.append(sign, content);
+    target.append(radical);
+  }
+
+  function appendDecoratedMath(target, text) {
+    const source = String(text);
+    let cursor = 0;
+    for (const match of source.matchAll(MATH_DECORATION_PATTERN)) {
+      appendMathCharacters(target, source.slice(cursor, match.index));
+      if (match[1]) {
+        const norm = document.createElement("span");
+        norm.className = "math-norm";
+        norm.append(document.createTextNode("‖"));
+        appendVector(norm, match[1]);
+        norm.append(document.createTextNode("‖"));
+        target.append(norm);
+      } else if (match[2]) {
+        appendVector(target, match[2]);
+      } else if (match[3]) {
+        appendFraction(target, match[3], match[4]);
+      } else {
+        appendRadical(target, match[5]);
+      }
+      cursor = match.index + match[0].length;
+    }
+    appendMathCharacters(target, source.slice(cursor));
+  }
+
   function renderMathText(target, text) {
     const fragment = document.createDocumentFragment();
     const source = String(text);
     let cursor = 0;
     for (const match of source.matchAll(MATH_INLINE_PATTERN)) {
-      appendMathCharacters(fragment, source.slice(cursor, match.index));
+      appendDecoratedMath(fragment, source.slice(cursor, match.index));
       const formula = document.createElement("span");
       formula.className = "math-inline";
-      appendMathCharacters(formula, match[0]);
+      appendDecoratedMath(formula, match[0]);
       fragment.append(formula);
       cursor = match.index + match[0].length;
     }
-    appendMathCharacters(fragment, source.slice(cursor));
+    appendDecoratedMath(fragment, source.slice(cursor));
     target.replaceChildren(fragment);
   }
 

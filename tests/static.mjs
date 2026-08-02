@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { access, readFile } from "node:fs/promises";
 
-const [html, app, learning, styles, manifestText, serviceWorker, exerciseLabHtml, exerciseLabApp] = await Promise.all([
+const [html, app, learning, styles, manifestText, serviceWorker, exerciseLabHtml, exerciseLabApp, exerciseLabStyles] = await Promise.all([
   readFile(new URL("../index.html", import.meta.url), "utf8"),
   readFile(new URL("../app.js", import.meta.url), "utf8"),
   readFile(new URL("../learning-model.js", import.meta.url), "utf8"),
@@ -9,7 +9,8 @@ const [html, app, learning, styles, manifestText, serviceWorker, exerciseLabHtml
   readFile(new URL("../manifest.webmanifest", import.meta.url), "utf8"),
   readFile(new URL("../service-worker.js", import.meta.url), "utf8"),
   readFile(new URL("../exerciseurs/index.html", import.meta.url), "utf8"),
-  readFile(new URL("../exerciseurs/app.js", import.meta.url), "utf8")
+  readFile(new URL("../exerciseurs/app.js", import.meta.url), "utf8"),
+  readFile(new URL("../exerciseurs/styles.css", import.meta.url), "utf8")
 ]);
 
 const ids = new Set([...html.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]));
@@ -56,7 +57,13 @@ assert.match(app, /clickValue\(\) \* \(hyper \? stats\.multiplier : 1\) \* boost
 assert.match(app, /clickValue\(\) \* hyperStats\(\)\.pulsesPerSecond \* boost/, "le bonus de production doit aussi s'appliquer aux impulsions Hypercadence");
 assert.match(app, /renderMathText/, "les formules doivent être rendues dans des groupes insécables");
 assert.match(app, /SUBSCRIPT_CHARACTERS/, "les indices doivent être redessinés avec la police du jeu");
+assert.match(app, /appendRadical/, "les racines doivent disposer d'un rendu couvrant tout le radicande");
+assert.match(app, /appendFraction/, "les quotients mathématiques doivent disposer de vraies barres de fraction");
+assert.match(app, /appendVector/, "les vecteurs doivent être surmontés d'une flèche");
 assert.match(styles, /\.math-inline[^]*white-space:\s*nowrap/, "une formule ne doit pas être coupée à l'intérieur sur mobile");
+assert.match(styles, /\.math-radicand[^}]*border-top/, "le trait d'une racine doit recouvrir le radicande");
+assert.match(styles, /\.math-fraction[^}]*grid-template-rows/, "les quotients doivent être empilés en fractions");
+assert.match(styles, /\.math-vector::before[^}]*content:\s*"→"/, "une flèche doit être dessinée au-dessus des vecteurs");
 assert.equal((html.match(/data-tab="[^"]+"[^>]*role="tab"/g) || []).length, 4, "quatre onglets doivent séparer le noyau, les ateliers, les améliorations et le réseau");
 assert.equal((html.match(/data-protocol-view="[^"]+"/g) || []).length, 2, "les protocoles doivent être séparés entre puissance et confort");
 assert.match(app, /EVENT_WINDOW_MS/, "les perturbations doivent avoir une durée de disponibilité limitée");
@@ -119,6 +126,11 @@ assert.match(exerciseLabApp, /copyDiagnostic/, "le laboratoire doit permettre de
 assert.match(exerciseLabApp, /gesturestart/, "le laboratoire doit bloquer les gestes de zoom Safari");
 assert.match(exerciseLabApp, /isDoubleTap/, "le laboratoire doit neutraliser le zoom par double tap");
 assert.match(exerciseLabApp, /selectstart/, "le laboratoire doit bloquer la sélection de texte");
+assert.match(exerciseLabApp, /format \$\{related\.indexOf\(subskill\) \+ 1\}/, "les formats homonymes doivent être numérotés en français");
+assert.doesNotMatch(exerciseLabApp, /\$\{subskill\.label\} — \$\{subskill\.id\}/, "les identifiants techniques anglais ne doivent pas apparaître dans le sélecteur");
+assert.match(exerciseLabStyles, /\.math-radicand[^}]*border-top/, "le laboratoire doit partager le rendu complet des racines");
+assert.match(exerciseLabStyles, /\.math-fraction[^}]*grid-template-rows/, "le laboratoire doit partager le rendu des fractions");
+assert.match(exerciseLabStyles, /\.math-vector::before[^}]*content:\s*"→"/, "le laboratoire doit partager le rendu des vecteurs");
 
 const manifest = JSON.parse(manifestText);
 assert.equal(manifest.display, "standalone", "le jeu installé doit s'ouvrir en mode autonome");

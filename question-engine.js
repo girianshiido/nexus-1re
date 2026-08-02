@@ -611,18 +611,18 @@
     const start = pick([80, 100, 120, 160, 200, 250, 400], rng);
     const rate = pick([-25, -20, -10, 10, 20, 25, 50], rng);
     const end = start * (1 + rate / 100);
-    const sign = rate > 0 ? "+" : "−";
-    const { choices, answer } = makeChoices(`${sign}${Math.abs(rate)} %`, [
-      `${rate > 0 ? "+" : "−"}${Math.abs(rate / 2)} %`,
-      `${rate > 0 ? "+" : "−"}${Math.abs(rate + (rate > 0 ? 10 : -10))} %`,
-      `${rate < 0 ? "+" : "−"}${Math.abs(rate)} %`
+    const good = formatEvolutionRate(rate);
+    const { choices, answer } = makeChoices(good, [
+      formatEvolutionRate(rate / 2),
+      formatEvolutionRate(rate + (rate > 0 ? 10 : -10)),
+      formatEvolutionRate(-rate)
     ], rng);
     return {
       kind: "percent-rate",
       skill: "evolutions",
       prompt: `Une production passe de ${start} à ${formatNumber(end)} unités. Quel est son taux d'évolution ?`,
       choices, answer,
-      explanation: `(${formatNumber(end)} − ${start}) ÷ ${start} = ${formatNumber(rate / 100)} ; le taux est donc ${sign}${Math.abs(rate)} %.`
+      explanation: `(${formatNumber(end)} − ${start}) ÷ ${start} = ${formatNumber(rate / 100)} ; le taux est donc ${good}.`
     };
   }
 
@@ -2055,9 +2055,9 @@
     return {
       kind: "dot-product-coordinates",
       skill: "vectors",
-      prompt: `Dans un repère orthonormé, u = (${ux} ; ${uy}) et v = (${vx} ; ${vy}). Calculer u · v.`,
+      prompt: `Dans un repère orthonormé, vec(u) = (${ux} ; ${uy}) et vec(v) = (${vx} ; ${vy}). Calculer vec(u) · vec(v).`,
       choices, answer,
-      explanation: `u · v = ${ux} × (${vx}) + ${uy} × (${vy}) = ${good}.`
+      explanation: `vec(u) · vec(v) = ${ux} × (${vx}) + ${uy} × (${vy}) = ${good}.`
     };
   }
 
@@ -2071,9 +2071,9 @@
     return {
       kind: "vector-norm",
       skill: "vectors",
-      prompt: `Calculer la norme du vecteur u = (${x} ; ${y}).`,
+      prompt: `Calculer norm(vec(u)) pour vec(u) = (${x} ; ${y}).`,
       choices, answer,
-      explanation: `||u|| = √(${x}² + ${y}²) = √${triple[2] ** 2} = ${good}.`
+      explanation: `norm(vec(u)) = √(${x}² + ${y}²) = √${triple[2] ** 2} = ${good}.`
     };
   }
 
@@ -2085,41 +2085,51 @@
     return {
       kind: "vector-orthogonality",
       skill: "vectors",
-      prompt: `Le vecteur u = (${a} ; ${b}). Quel vecteur proposé lui est orthogonal ?`,
+      prompt: `Le vecteur vec(u) = (${a} ; ${b}). Quel vecteur proposé lui est orthogonal ?`,
       choices, answer,
-      explanation: `Avec v = ${good}, u · v = ${a} × ${b} + ${b} × (${-a}) = 0 : les vecteurs sont orthogonaux.`
+      explanation: `Avec vec(v) = ${good}, vec(u) · vec(v) = ${a} × ${b} + ${b} × (${-a}) = 0 : les vecteurs sont orthogonaux.`
     };
   }
 
   function dotProductAngle(rng) {
     const normU = randInt(2, 7, rng);
     const normV = randInt(2, 7, rng);
-    const angle = pick([0, 60, 90, 120, 180], rng);
-    const cosines = { 0: 1, 60: 0.5, 90: 0, 120: -0.5, 180: -1 };
-    const good = normU * normV * cosines[angle];
-    const { choices, answer } = makeChoices(good, [normU * normV, normU + normV, -good, 0], rng);
+    const angle = pick([
+      { label: "0", cosine: 1 },
+      { label: "π/3", cosine: 0.5 },
+      { label: "π/2", cosine: 0 },
+      { label: "2π/3", cosine: -0.5 },
+      { label: "π", cosine: -1 }
+    ], rng);
+    const good = normU * normV * angle.cosine;
+    const formattedGood = formatNumber(good);
+    const { choices, answer } = makeChoices(formattedGood, [normU * normV, normU + normV, -good, 0], rng);
     return {
       kind: "dot-product-angle",
       skill: "vectors",
-      prompt: `On a ||u|| = ${normU}, ||v|| = ${normV} et l'angle (u, v) vaut ${angle}°. Calculer u · v.`,
+      prompt: `On a norm(vec(u)) = ${normU}, norm(vec(v)) = ${normV} et l'angle (vec(u), vec(v)) vaut ${angle.label}. Calculer vec(u) · vec(v).`,
       choices, answer,
-      explanation: `u · v = ||u|| ||v|| cos(${angle}°) = ${normU} × ${normV} × ${cosines[angle]} = ${good}.`
+      explanation: `vec(u) · vec(v) = norm(vec(u)) norm(vec(v)) cos(${angle.label}) = ${normU} × ${normV} × ${formatNumber(angle.cosine)} = ${formattedGood}.`
     };
   }
 
   function alKashi(rng) {
-    const sides = pick([[3, 4, 60], [4, 6, 60], [5, 7, 120], [6, 8, 90]], rng);
-    const [a, b, angle] = sides;
-    const cosines = { 60: 0.5, 90: 0, 120: -0.5 };
-    const squared = a * a + b * b - 2 * a * b * cosines[angle];
+    const sides = pick([
+      [3, 4, "π/3", 0.5],
+      [4, 6, "π/3", 0.5],
+      [5, 7, "2π/3", -0.5],
+      [6, 8, "π/2", 0]
+    ], rng);
+    const [a, b, angle, cosine] = sides;
+    const squared = a * a + b * b - 2 * a * b * cosine;
     const good = `√${squared}`;
-    const { choices, answer } = makeChoices(good, [`√${a * a + b * b}`, `√${a * a + b * b + 2 * a * b * cosines[angle]}`, String(a + b)], rng);
+    const { choices, answer } = makeChoices(good, [`√${a * a + b * b}`, `√${a * a + b * b + 2 * a * b * cosine}`, String(a + b)], rng);
     return {
       kind: "al-kashi",
       skill: "vectors",
-      prompt: `Dans un triangle, deux côtés mesurent ${a} et ${b}, et l'angle compris vaut ${angle}°. Quelle est la longueur du troisième côté ?`,
+      prompt: `Dans un triangle, deux côtés mesurent ${a} et ${b}, et l'angle compris vaut ${angle}. Quelle est la longueur du troisième côté ?`,
       choices, answer,
-      explanation: `Al-Kashi donne c² = ${a}² + ${b}² − 2 × ${a} × ${b} × cos(${angle}°) = ${squared}, donc c = ${good}.`
+      explanation: `Al-Kashi donne c² = ${a}² + ${b}² − 2 × ${a} × ${b} × cos(${angle}) = ${squared}, donc c = ${good}.`
     };
   }
 
@@ -2242,9 +2252,9 @@
     return {
       kind: "complex-affix",
       skill: "complexAlgebra",
-      prompt: `A a pour affixe ${complexExpression(ax, ay)} et B a pour affixe ${complexExpression(bx, by)}. Quelle est l'affixe du vecteur AB ?`,
+      prompt: `A a pour affixe ${complexExpression(ax, ay)} et B a pour affixe ${complexExpression(bx, by)}. Quelle est l'affixe du vecteur vec(AB) ?`,
       choices, answer,
-      explanation: `L'affixe de AB est zB − zA = (${bx} − ${ax}) + (${by} − ${ay})i = ${good}.`
+      explanation: `L'affixe de vec(AB) est zB − zA = (${bx} − ${ax}) + (${by} − ${ay})i = ${good}.`
     };
   }
 

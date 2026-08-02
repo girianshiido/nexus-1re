@@ -174,6 +174,42 @@ assert.ok(
   "les fractions doivent couvrir addition, soustraction et multiplication"
 );
 
+const percentageRates = sample("percent-rate");
+assert.ok(
+  percentageRates.some(question => question.choices.some(choice => /12,5 %/.test(choice))),
+  "les taux décimaux doivent employer la virgule française"
+);
+assert.ok(
+  percentageRates.every(question => !/\d+\.\d+\s*%/.test(JSON.stringify(question))),
+  "aucun pourcentage décimal ne doit employer un point"
+);
+
+const dotProductAngles = sample("dot-product-angle");
+assert.ok(
+  dotProductAngles.every(question => /norm\(vec\(u\)\)/.test(question.prompt) && /norm\(vec\(v\)\)/.test(question.prompt)),
+  "les normes des vecteurs doivent utiliser les marqueurs de rendu mathématique"
+);
+assert.ok(
+  dotProductAngles.every(question => !/°/.test(`${question.prompt} ${question.explanation}`)),
+  "les angles du produit scalaire doivent être exprimés en radians sans unité"
+);
+assert.deepEqual(
+  [...new Set(dotProductAngles.map(question => question.prompt.match(/vaut ([^.]+)\./)?.[1])).values()].sort(),
+  ["0", "2π/3", "π", "π/2", "π/3"].sort(),
+  "le produit scalaire doit couvrir les cinq angles remarquables en radians"
+);
+
+const alKashiQuestions = sample("al-kashi");
+assert.ok(
+  alKashiQuestions.every(question => !/°/.test(`${question.prompt} ${question.explanation}`)),
+  "les angles d'Al-Kashi doivent être exprimés en radians sans unité"
+);
+assert.deepEqual(
+  [...new Set(alKashiQuestions.map(question => question.prompt.match(/vaut ([^.]+)\./)?.[1])).values()].sort(),
+  ["2π/3", "π/2", "π/3"].sort(),
+  "Al-Kashi doit varier entre trois angles remarquables en radians"
+);
+
 const priorities = expectVariety("operation-priority", 100, 500);
 assert.ok(
   priorities.some(question => /\(/.test(question.prompt))
