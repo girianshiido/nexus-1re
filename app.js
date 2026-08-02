@@ -277,7 +277,8 @@
       merged.examBest = Number.isFinite(Number(parsed.examBest)) ? Math.max(0, Math.min(6, Number(parsed.examBest))) : null;
       merged.comfortSettings = { ...initial.comfortSettings, ...(parsed.comfortSettings || {}) };
       merged.activeTab = TABS.includes(parsed.activeTab) ? parsed.activeTab : "core";
-      if (parsed.bulk === "milestone" && !(merged.calibrationUpgrades.milestonePlanner > 0)) merged.bulk = "1";
+      merged.bulk = Model.normalizePurchaseMode(parsed.bulk);
+      if (merged.bulk === "milestone" && !(merged.calibrationUpgrades.milestonePlanner > 0)) merged.bulk = "1";
       if (Number.isFinite(parsed.workshopReveal)) {
         merged.workshopReveal = Math.min(Model.WORKSHOPS.length - 1, Math.max(1, Math.floor(parsed.workshopReveal)));
       } else {
@@ -456,7 +457,7 @@
     renderSpecialityState();
     setActiveTab(state.activeTab, { moveToTop: false });
     updateSoundButton();
-    document.querySelectorAll(".bulk-button").forEach(button => button.classList.toggle("active", button.dataset.bulk === String(state.bulk)));
+    syncBulkSelection();
     renderWorkshops();
     renderWorkshopUpgrades();
     renderCalibrationUpgrades();
@@ -836,8 +837,26 @@
 
   function workshopQuote(workshop) {
     const owned = state.workshops[workshop.id] || 0;
-    const available = state.bulk === "milestone" ? Infinity : state.flux;
-    return Model.purchaseQuote(workshop.id, owned, state.bulk, available);
+    const mode = Model.normalizePurchaseMode(state.bulk);
+    const available = mode === "milestone" ? Infinity : state.flux;
+    return Model.purchaseQuote(workshop.id, owned, mode, available);
+  }
+
+  function syncBulkSelection() {
+    state.bulk = Model.normalizePurchaseMode(state.bulk);
+    document.querySelectorAll(".bulk-button").forEach(button => {
+      const active = button.dataset.bulk === state.bulk;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-pressed", String(active));
+    });
+    document.documentElement.dataset.bulkMode = state.bulk;
+  }
+
+  function setBulkMode(mode) {
+    state.bulk = Model.normalizePurchaseMode(mode);
+    syncBulkSelection();
+    renderWorkshops();
+    save();
   }
 
   function buyWorkshop(id) {
@@ -1606,9 +1625,11 @@
       const noMoreMilestone = state.bulk === "milestone" && Model.nextMilestone(count) === null;
       button.querySelector("span").textContent = noMoreMilestone
         ? "Tous les paliers"
-        : quote.quantity
-          ? `Acheter ×${quote.quantity}`
-          : "Acheter";
+        : state.bulk === "max" && quote.quantity
+          ? `MAX · ×${quote.quantity}`
+          : quote.quantity
+            ? `Acheter ×${quote.quantity}`
+            : "Acheter";
       button.querySelector("small").textContent = quote.quantity
         ? `${format(quote.cost)} flux`
         : noMoreMilestone
@@ -1733,7 +1754,10 @@
       `Signal sonore et vibration · fenêtre ${format(comfort.eventWindowMs / 1000)} s`
     );
     dom.milestoneBulkButton.hidden = !comfort.milestonePlanner;
-    if (!comfort.milestonePlanner && state.bulk === "milestone") state.bulk = "1";
+    if (!comfort.milestonePlanner && state.bulk === "milestone") {
+      state.bulk = "1";
+      syncBulkSelection();
+    }
   }
 
   function renderLearning() {
@@ -2059,11 +2083,7 @@
     renderComfortControls();
     save();
   }));
-  document.querySelectorAll(".bulk-button").forEach(button => button.addEventListener("click", () => {
-    state.bulk = button.dataset.bulk;
-    document.querySelectorAll(".bulk-button").forEach(item => item.classList.toggle("active", item === button));
-    renderWorkshops();
-  }));
+  document.querySelectorAll(".bulk-button").forEach(button => button.addEventListener("click", () => setBulkMode(button.dataset.bulk)));
   window.addEventListener("beforeunload", save);
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) save();
@@ -2081,7 +2101,7 @@
   renderSpecialityState();
   setActiveTab(state.activeTab, { moveToTop: false });
   updateSoundButton();
-  document.querySelectorAll(".bulk-button").forEach(button => button.classList.toggle("active", button.dataset.bulk === String(state.bulk)));
+  syncBulkSelection();
   verifyTimeAndApplyOfflineProgress({ announceFailure: true });
   renderWorkshops();
   renderWorkshopUpgrades();

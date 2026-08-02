@@ -37,6 +37,10 @@ assert.ok(model.workshopUpgradeCost("proportions", 1) > model.workshopUpgradeCos
 const quote = model.purchaseQuote("proportions", 0, 10, 100);
 assert.ok(quote.quantity > 1 && quote.quantity < 10, "l'achat groupé doit prendre la quantité abordable");
 assert.ok(quote.cost <= 100, "l'achat groupé ne doit jamais dépasser le flux disponible");
+const twoUnitBudget = model.workshopCost("proportions", 0) + model.workshopCost("proportions", 1);
+assert.equal(model.purchaseQuote("proportions", 0, "max", twoUnitBudget).quantity, 2, "MAX doit acheter toutes les unités abordables");
+assert.equal(model.purchaseQuote("proportions", 0, "MAX", twoUnitBudget).quantity, 2, "le mode MAX importé doit être normalisé sans revenir à ×1");
+assert.equal(model.normalizePurchaseMode("inconnu"), "1", "un ancien mode invalide doit revenir explicitement à ×1");
 assert.deepEqual(
   model.purchaseQuote("proportions", 7, "milestone", Infinity).quantity,
   3,

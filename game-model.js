@@ -80,13 +80,19 @@
     return Math.ceil(workshop.baseCost * Math.pow(workshop.costGrowth || 1.16, Math.max(0, owned)));
   }
 
+  function normalizePurchaseMode(requested) {
+    const mode = String(requested ?? "1").toLowerCase();
+    return ["1", "10", "max", "milestone"].includes(mode) ? mode : "1";
+  }
+
   function purchaseQuote(id, owned, requested, available = Infinity) {
-    const milestone = requested === "milestone" ? nextMilestone(owned) : null;
-    const limit = requested === "max"
+    const mode = normalizePurchaseMode(requested);
+    const milestone = mode === "milestone" ? nextMilestone(owned) : null;
+    const limit = mode === "max"
       ? 10000
-      : requested === "milestone"
+      : mode === "milestone"
         ? Math.max(0, (milestone || owned) - owned)
-        : Math.max(0, Number(requested) || 0);
+        : Math.max(0, Number(mode) || 0);
     let quantity = 0;
     let cost = 0;
     while (quantity < limit) {
@@ -95,7 +101,7 @@
       cost += next;
       quantity += 1;
     }
-    return { quantity, cost };
+    return { quantity, cost, mode };
   }
 
   function unlockedMilestoneCount(count) {
@@ -333,6 +339,7 @@
     CALIBRATION_UPGRADES,
     workshopById,
     workshopCost,
+    normalizePurchaseMode,
     purchaseQuote,
     milestoneMultiplier,
     workshopUpgradeFactor,

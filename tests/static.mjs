@@ -91,6 +91,8 @@ assert.match(html, /Automatismes épreuve · 12 QCM/, "le mode automatismes de l
 assert.match(app, /recordAnswer/, "chaque réponse doit alimenter le modèle d'apprentissage");
 assert.match(app, /startLearningSession/, "les parcours ciblés doivent être câblés");
 assert.match(html, /id="milestone-bulk-button"/, "l'achat jusqu'au prochain palier doit avoir une commande dédiée");
+assert.match(app, /syncBulkSelection/, "le mode d'achat affiché et le mode réellement utilisé doivent rester synchronisés");
+assert.match(app, /MAX · ×/, "un achat MAX limité à une unité doit rester identifié comme un achat MAX");
 assert.match(html, /id="mistake-button"/, "le carnet d'erreurs doit être accessible depuis le parcours adaptatif");
 assert.match(learning, /remedialAt/, "une erreur doit programmer une reprise différée");
 assert.match(learning, /stageFor/, "les niveaux de consolidation doivent être calculés");
