@@ -110,10 +110,15 @@ assert.match(serviceWorker, /cache: "reload"/, "le cache HTTP ne doit pas masque
 assert.match(serviceWorker, /origin !== self\.location\.origin/, "les requêtes vers l'horloge UTC ne doivent pas être mises en cache");
 assert.match(exerciseLabHtml, /Laboratoire des exerciseurs/, "la page autonome de contrôle des exerciseurs doit exister");
 assert.match(exerciseLabHtml, /noindex, nofollow/, "la page de contrôle ne doit pas être proposée aux moteurs de recherche");
+assert.match(exerciseLabHtml, /maximum-scale=1/, "le laboratoire doit désactiver le zoom par pincement");
+assert.match(exerciseLabHtml, /user-scalable=no/, "le laboratoire doit verrouiller le niveau de zoom tactile");
 assert.doesNotMatch(html, /exerciseurs/, "le jeu ne doit pas encore contenir de lien vers le laboratoire des exerciseurs");
 assert.match(exerciseLabApp, /Engine\.SUBSKILLS/, "le laboratoire doit énumérer automatiquement tous les exerciseurs du jeu");
 assert.match(exerciseLabApp, /Engine\.generateForKinds/, "le laboratoire doit utiliser le même générateur que le jeu");
 assert.match(exerciseLabApp, /copyDiagnostic/, "le laboratoire doit permettre de copier le diagnostic d'une question");
+assert.match(exerciseLabApp, /gesturestart/, "le laboratoire doit bloquer les gestes de zoom Safari");
+assert.match(exerciseLabApp, /isDoubleTap/, "le laboratoire doit neutraliser le zoom par double tap");
+assert.match(exerciseLabApp, /selectstart/, "le laboratoire doit bloquer la sélection de texte");
 
 const manifest = JSON.parse(manifestText);
 assert.equal(manifest.display, "standalone", "le jeu installé doit s'ouvrir en mode autonome");

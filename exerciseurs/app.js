@@ -65,6 +65,60 @@
     target.replaceChildren(fragment);
   }
 
+  function installInteractionGuards() {
+    let touchStart = null;
+    let lastTap = null;
+    const pointOf = touch => ({ x: touch.clientX, y: touch.clientY });
+    const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+
+    document.addEventListener("selectstart", event => event.preventDefault());
+    document.addEventListener("touchstart", event => {
+      if (event.touches.length > 1) {
+        event.preventDefault();
+        touchStart = null;
+        return;
+      }
+      const touch = event.touches[0];
+      touchStart = touch ? { ...pointOf(touch), time: performance.now(), moved: false } : null;
+    }, { passive: false });
+    document.addEventListener("touchmove", event => {
+      if (event.touches.length > 1) {
+        event.preventDefault();
+        touchStart = null;
+        return;
+      }
+      const touch = event.touches[0];
+      if (touchStart && touch && distance(touchStart, pointOf(touch)) > 12) touchStart.moved = true;
+    }, { passive: false });
+    document.addEventListener("touchend", event => {
+      const touch = event.changedTouches[0];
+      if (!touch || !touchStart || touchStart.moved || performance.now() - touchStart.time > 450) {
+        touchStart = null;
+        return;
+      }
+      const tap = { ...pointOf(touch), time: performance.now() };
+      const isDoubleTap = lastTap && tap.time - lastTap.time < 330 && distance(lastTap, tap) < 32;
+      if (isDoubleTap) {
+        event.preventDefault();
+        lastTap = null;
+      } else {
+        lastTap = tap;
+      }
+      touchStart = null;
+    }, { passive: false });
+    document.addEventListener("touchcancel", () => { touchStart = null; }, { passive: true });
+    document.addEventListener("dblclick", event => event.preventDefault(), { passive: false });
+    ["gesturestart", "gesturechange", "gestureend"].forEach(type => {
+      document.addEventListener(type, event => event.preventDefault(), { passive: false });
+    });
+    document.addEventListener("wheel", event => {
+      if (event.ctrlKey || event.metaKey) event.preventDefault();
+    }, { passive: false });
+    document.addEventListener("keydown", event => {
+      if ((event.ctrlKey || event.metaKey) && ["+", "=", "-", "0"].includes(event.key)) event.preventDefault();
+    });
+  }
+
   function programmeSubskills() {
     return Engine.SUBSKILLS.filter(subskill => programme === "all"
       || (programme === "speciality" ? subskill.origin === SPECIALITY_ORIGIN : subskill.origin !== SPECIALITY_ORIGIN));
@@ -322,6 +376,7 @@
     if (event.key === "ArrowLeft") moveKind(-1);
   });
 
+  installInteractionGuards();
   populateSkills();
   populateKinds({ preserve: false });
   const requestedKind = new URL(window.location.href).searchParams.get("kind");
