@@ -121,24 +121,26 @@ assert.ok(
 );
 
 assert.equal(model.cycleTarget(0), 50000, "le premier point doit demander 50 000 flux cumulés");
-assert.equal(model.calibrationPotential(854810000), 25, "855 millions de flux ne doivent plus produire une centaine de points");
-assert.equal(model.cycleGain(854810000, 0), 25);
-assert.equal(model.cycleGain(854810000, 5), 20, "les points déjà obtenus ne doivent pas être gagnés une seconde fois");
-assert.equal(model.cycleGain(854810000, 25), 0);
+assert.equal(model.cycleGain(50000, 0), 1, "le premier seuil doit ouvrir le premier redémarrage");
+assert.equal(model.maxCycleGain(0), 1, "le premier cycle ne doit jamais rapporter une centaine de points");
+assert.equal(model.cycleGain(854810000, 0), 1, "un énorme dépassement initial doit rester limité à la capacité du cycle");
+assert.equal(model.cycleGain(0, 25), 0, "un nouveau cycle doit repartir sans gain déjà acquis");
+assert.equal(model.maxCycleGain(100), 75, "un cycle avancé peut être prolongé sans permettre un saut ×100");
+assert.equal(
+  model.cycleGain(model.cycleFluxTarget(100, 75), 100),
+  75,
+  "la capacité annoncée doit être atteignable exactement"
+);
 assert.equal(model.cycleProgress(0, 0), 0);
 assert.equal(model.cycleProgress(model.cycleTarget(0), 0), 1);
 
-let frequentCalibration = 0;
-for (let point = 1; point <= 10; point += 1) {
-  const lifetimeFlux = model.CALIBRATION_FLUX_BASE * point ** model.CALIBRATION_FLUX_EXPONENT;
-  frequentCalibration += model.cycleGain(lifetimeFlux, frequentCalibration);
-}
-const delayedFlux = model.CALIBRATION_FLUX_BASE * 10 ** model.CALIBRATION_FLUX_EXPONENT;
-const delayedCalibration = model.cycleGain(delayedFlux, 0);
-assert.equal(frequentCalibration, delayedCalibration, "redémarrer souvent ou tard doit donner le même capital à production cumulée égale");
-assert.equal(
-  model.calibrationPotential(model.CALIBRATION_FLUX_BASE * 200 ** model.CALIBRATION_FLUX_EXPONENT),
-  200
+assert.ok(
+  model.cycleFluxTarget(100, 75) > model.cycleFluxTarget(100, 1) * 100,
+  "prolonger fortement un cycle doit coûter beaucoup plus que franchir son prochain seuil"
+);
+assert.ok(
+  model.calibrationFluxForPoints(100) > model.CALIBRATION_FLUX_BASE * 100 ** model.CALIBRATION_FLUX_EXPONENT,
+  "la courbe doit se raidir après les premiers cycles"
 );
 assert.match(model.formatCompactNumber(1e12), /^1\sBn$/);
 assert.match(model.formatCompactNumber(1e15), /^1\sBd$/, "un billiard ne doit pas être affiché comme 1 000 billions");
@@ -152,10 +154,9 @@ const minimumCoreFlux = model.WORKSHOPS
   .slice(0, model.CORE_WORKSHOP_COUNT)
   .reduce((total, workshop) => total + Array.from({ length: 100 }, (_, owned) => model.workshopCost(workshop.id, owned))
     .reduce((workshopTotal, cost) => workshopTotal + cost, 0), 0);
-assert.ok(
-  model.calibrationPotential(minimumCoreFlux) >= 400,
-  "les 100 unités des douze ateliers doivent naturellement dépasser le prix du secteur de spécialité"
-);
-assert.equal(model.permanentMultiplier(5), 2);
+assert.ok(minimumCoreFlux > model.cycleTarget(0), "le réseau complet doit dépasser le coût du premier cycle");
+assert.ok(Math.abs(model.permanentMultiplier(5) - 1.9950248756) < 1e-9);
+assert.ok(model.permanentMultiplier(200) > 30, "les premiers redémarrages doivent rester très gratifiants");
+assert.ok(model.permanentMultiplier(1e9) < 202, "le multiplicateur permanent doit rester plafonné même avec un capital extrême");
 
 console.log("Économie, paliers, clics et cycles validés.");

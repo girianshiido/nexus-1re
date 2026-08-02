@@ -231,6 +231,10 @@ assert.ok(
     && factorizations.some(question => /Factoriser par −/.test(question.prompt)),
   "les factorisations doivent varier le facteur commun"
 );
+assert.ok(
+  factorizations.every(question => question.choices.every(choice => !/\(\(/.test(choice))),
+  "les factorisations ne doivent jamais ajouter une double paire de parenthèses"
+);
 
 const recurrences = expectVariety("recurrent-sequence-term", 55, 180);
 assert.ok(

@@ -43,9 +43,9 @@ assert.match(app, /isDoubleTap/, "le double tap iOS doit être intercepté sans 
 assert.match(app, /questionReports/, "les questions signalées doivent être mémorisées localement");
 assert.match(app, /buyWorkshopUpgrade/, "les améliorations d'atelier doivent être achetables");
 assert.match(app, /buyCalibrationUpgrade/, "les points d'étalonnage doivent financer des améliorations permanentes");
-assert.match(app, /cycleGain\(state\.lifetimeFlux, state\.calibration\)/, "les points doivent dépendre de la production cumulée et du capital déjà obtenu");
-assert.doesNotMatch(app, /cycleGain\(state\.cycleFlux/, "le flux du seul cycle ne doit plus permettre de multiplier les points");
-assert.match(html, /flux produit depuis le début/, "l'interface doit expliquer la progression cumulative de l'étalonnage");
+assert.match(app, /cycleGain\(state\.cycleFlux, state\.calibration\)/, "les points doivent dépendre de la production du cycle courant");
+assert.match(app, /state\.cycleFlux = 0/, "un redémarrage doit vider la production comptabilisée du cycle");
+assert.match(html, /Chaque cycle possède une capacité/, "l'interface doit expliquer la limite anti-emballement");
 assert.match(app, /Model\.formatCompactNumber/, "les grands nombres doivent employer les unités étendues du jeu");
 assert.match(app, /runAutomation/, "le collecteur autonome doit acheter les améliorations d'atelier");
 assert.match(app, /protectedFlux/, "la réserve doit protéger du flux contre l'automatisation");
@@ -68,7 +68,8 @@ assert.match(styles, /\.math-fraction[^}]*grid-template-rows/, "les quotients do
 assert.match(styles, /\.math-fraction[^}]*vertical-align:\s*middle/, "les fractions doivent être centrées verticalement dans les énoncés et les réponses");
 assert.match(styles, /\.math-inline-fraction[^}]*align-items:\s*center/, "les fractions incluses dans une formule doivent être centrées avec les autres symboles");
 assert.match(styles, /\.math-signed-fraction[^}]*align-items:\s*center/, "le signe moins doit être centré devant une fraction négative");
-assert.match(styles, /\.math-vector::before[^}]*content:\s*"→"/, "une flèche doit être dessinée au-dessus des vecteurs");
+assert.match(styles, /\.math-vector::before[^}]*background:\s*currentColor/, "la hampe d'une flèche doit s'étendre au-dessus du nom du vecteur");
+assert.match(styles, /\.math-vector::after[^}]*border-right/, "une pointe doit terminer la flèche d'un vecteur");
 assert.equal((html.match(/data-tab="[^"]+"[^>]*role="tab"/g) || []).length, 4, "quatre onglets doivent séparer le noyau, les ateliers, les améliorations et le réseau");
 assert.equal((html.match(/data-protocol-view="[^"]+"/g) || []).length, 2, "les protocoles doivent être séparés entre puissance et confort");
 assert.match(app, /EVENT_WINDOW_MS/, "les perturbations doivent avoir une durée de disponibilité limitée");
@@ -138,7 +139,8 @@ assert.match(exerciseLabStyles, /\.math-fraction[^}]*grid-template-rows/, "le la
 assert.match(exerciseLabStyles, /\.math-fraction[^}]*vertical-align:\s*middle/, "le laboratoire doit centrer verticalement les fractions");
 assert.match(exerciseLabStyles, /\.math-inline-fraction[^}]*align-items:\s*center/, "le laboratoire doit centrer les fractions dans les formules composées");
 assert.match(exerciseLabStyles, /\.math-signed-fraction[^}]*align-items:\s*center/, "le laboratoire doit placer le signe moins devant les fractions négatives");
-assert.match(exerciseLabStyles, /\.math-vector::before[^}]*content:\s*"→"/, "le laboratoire doit partager le rendu des vecteurs");
+assert.match(exerciseLabStyles, /\.math-vector::before[^}]*background:\s*currentColor/, "le laboratoire doit partager la hampe extensible des vecteurs");
+assert.match(exerciseLabStyles, /\.math-vector::after[^}]*border-right/, "le laboratoire doit partager la pointe des vecteurs");
 
 const manifest = JSON.parse(manifestText);
 assert.equal(manifest.display, "standalone", "le jeu installé doit s'ouvrir en mode autonome");

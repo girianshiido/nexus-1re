@@ -102,22 +102,23 @@ select { width: 100%; min-height: 42px; padding: 9px 34px 9px 10px; border: 1px 
 .validation-chip.error { color: var(--danger); }
 .question-text { min-height: 76px; margin: 18px auto 25px; max-width: 950px; font-size: clamp(21px, 2.4vw, 34px); line-height: 1.32; text-align: center; overflow-wrap: normal; word-break: normal; }
 .math-inline { display: inline-block; white-space: nowrap; }
-.math-inline-fraction { display: inline-flex; align-items: center; vertical-align: middle; }
+.math-inline-fraction { display: inline-flex; align-items: center; vertical-align: baseline; }
 .math-sub, .math-sup { font-family: inherit; font-size: 0.65em; line-height: 0; }
 .math-sub { vertical-align: -0.34em; }
 .math-sup { vertical-align: 0.52em; }
-.math-vector { position: relative; display: inline-block; min-width: 0.72em; padding-top: 0.16em; font-style: italic; line-height: 1; text-align: center; }
-.math-vector::before { content: "→"; position: absolute; top: -0.7em; left: 50%; font-size: 0.72em; font-style: normal; font-weight: 700; line-height: 1; transform: translateX(-50%) scaleX(1.12); }
+.math-vector { position: relative; display: inline-block; min-width: 0.72em; padding-top: 0.32em; vertical-align: -0.04em; font-style: italic; line-height: 1; text-align: center; }
+.math-vector::before { content: ""; position: absolute; top: 0.09em; right: 0.12em; left: 0.04em; height: 0.065em; border-radius: 999px; background: currentColor; }
+.math-vector::after { content: ""; position: absolute; top: 0.015em; right: 0.035em; width: 0.18em; height: 0.18em; border-top: 0.065em solid currentColor; border-right: 0.065em solid currentColor; transform: rotate(45deg); transform-origin: center; }
 .math-norm { display: inline-flex; align-items: center; gap: 0.04em; white-space: nowrap; }
 .math-fraction { display: inline-grid; grid-template-rows: auto auto; align-items: center; min-width: 1.15em; margin: 0 0.05em; vertical-align: middle; font-size: 0.88em; line-height: 1.02; text-align: center; white-space: nowrap; }
-.math-fraction > span:first-child { padding: 0 0.12em 0.06em; border-bottom: 0.065em solid currentColor; }
+.math-fraction > span:first-child { padding: 0 0.12em 0.06em; border-bottom: 0.08em solid currentColor; }
 .math-fraction > span:last-child { padding: 0.05em 0.12em 0; }
 .math-signed-fraction { display: inline-flex; align-items: center; gap: 0.05em; vertical-align: middle; white-space: nowrap; }
 .math-signed-fraction > .math-fraction { vertical-align: 0; }
 .math-fraction-sign { line-height: 1; }
 .math-radical { display: inline-flex; align-items: flex-start; vertical-align: -0.08em; line-height: 1; white-space: nowrap; }
-.math-radical-sign { margin-right: -0.04em; font-size: 1.18em; line-height: 0.94; }
-.math-radicand { min-width: 0.62em; padding: 0.04em 0.08em 0 0.04em; border-top: 0.07em solid currentColor; line-height: 0.96; }
+.math-radical-sign { margin-right: 0; font-size: 1.2em; line-height: 0.94; }
+.math-radicand { min-width: 0.62em; margin-left: 0.01em; padding: 0.04em 0.1em 0 0.08em; border-top: 0.08em solid currentColor; line-height: 0.96; }
 .question-visual { margin: 18px 0 24px; }
 .question-visual table { width: 100%; border-collapse: collapse; text-align: center; font-size: 13px; }
 .question-visual th, .question-visual td { padding: 9px; border: 1px solid rgba(136, 205, 222, 0.25); }

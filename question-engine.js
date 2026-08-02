@@ -794,7 +794,7 @@
       prompt = `Factoriser : ${expression}.`;
       explanation = `x est commun aux deux termes : ${expression} = ${good}.`;
       distractors = [
-        `${coefficient}x(${linearFactor(constant)})`,
+        `${coefficient}x${linearFactor(constant)}`,
         `x(${affineExpression(coefficient, coefficient * constant)})`,
         `${coefficient}(${inside})`
       ];
@@ -1052,11 +1052,11 @@
     const layout = minimum
       ? {
           arrows: { leftY: 65, centerY: 100, rightY: 58 },
-          labels: { leftY: 68, centerY: 117, rightY: 68 }
+          labels: { leftX: 76, leftY: 68, centerY: 117, rightY: 68 }
         }
       : {
-          arrows: { leftY: 94, centerY: 56, rightY: 102 },
-          labels: { leftY: 114, centerY: 72, rightY: 120 }
+          arrows: { leftY: 98, centerY: 60, rightY: 106 },
+          labels: { leftX: 82, leftY: 114, centerY: 72, rightY: 120 }
         };
     const variationVisual = `<svg class="variation-svg" viewBox="0 0 430 128" role="img" aria-label="Tableau de variations : f ${minimum ? "décroît puis croît, avec un minimum" : "croît puis décroît, avec un maximum"} en ${vertex}">
       <defs><marker id="${arrowId}" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" /></marker></defs>
@@ -1068,7 +1068,7 @@
       <text class="variation-x" x="357" y="31">+∞</text>
       <line class="variation-arrow" x1="100" y1="${layout.arrows.leftY}" x2="207" y2="${layout.arrows.centerY}" marker-end="url(#${arrowId})" />
       <line class="variation-arrow" x1="235" y1="${layout.arrows.centerY}" x2="350" y2="${layout.arrows.rightY}" marker-end="url(#${arrowId})" />
-      <text class="variation-value" x="76" y="${layout.labels.leftY}">${values[0]}</text>
+      <text class="variation-value" x="${layout.labels.leftX}" y="${layout.labels.leftY}">${values[0]}</text>
       <text class="variation-value" x="221" y="${layout.labels.centerY}">${values[1]}</text>
       <text class="variation-value" x="362" y="${layout.labels.rightY}">${values[2]}</text>
     </svg>`;

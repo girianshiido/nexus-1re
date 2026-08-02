@@ -18,12 +18,12 @@
     { id: "statistics", name: "Analyseur statistique", icon: "x̄", baseCost: 2300000, baseRate: 7900, tier: 8, description: "Indicateurs, nuages de points et ajustements affines." },
     { id: "probability", name: "Simulateur probabiliste", icon: "P", baseCost: 14000000, baseRate: 36000, tier: 9, description: "Conditionnement, Bernoulli et variables aléatoires." },
     { id: "algorithmics", name: "Console algorithmique", icon: "</>", baseCost: 75000000, baseRate: 165000, tier: 10, description: "Python, listes, fonctions, données et tableur." },
-    { id: "trigonometry", name: "Convertisseur angulaire", icon: "π", baseCost: 8e14, baseRate: 1.6e9, costGrowth: 1.18, tier: 12, speciality: true, upgradeFactors: [3, 3, 4, 4, 5], description: "Radians, cercle trigonométrique, angles associés et équations." },
-    { id: "sinusoids", name: "Oscillateur harmonique", icon: "∿", baseCost: 1.4e16, baseRate: 2.8e10, costGrowth: 1.185, tier: 13, speciality: true, upgradeFactors: [3, 4, 4, 5, 5], description: "Amplitude, période, fréquence et phase des signaux sinusoïdaux." },
-    { id: "vectors", name: "Projecteur vectoriel", icon: "u·v", baseCost: 3e17, baseRate: 6e11, costGrowth: 1.19, tier: 14, speciality: true, upgradeFactors: [3, 4, 5, 5, 6], description: "Produit scalaire, projections, orthogonalité et théorème d'Al-Kashi." },
-    { id: "complexAlgebra", name: "Forge complexe", icon: "a+bi", baseCost: 7e18, baseRate: 1.4e13, costGrowth: 1.19, tier: 15, speciality: true, upgradeFactors: [4, 4, 5, 6, 6], description: "Forme algébrique, conjugué, module, affixes et opérations." },
-    { id: "complexTrig", name: "Polariseur complexe", icon: "[ρ,θ]", baseCost: 1.8e20, baseRate: 3.6e14, costGrowth: 1.191, tier: 16, speciality: true, upgradeFactors: [4, 5, 6, 7, 8], description: "Argument et passages entre formes algébrique et trigonométrique." },
-    { id: "advancedAnalysis", name: "Intégrateur différentiel", icon: "∫", baseCost: 5e21, baseRate: 1e16, costGrowth: 1.192, tier: 18, speciality: true, upgradeFactors: [5, 6, 7, 8, 10], description: "Dérivées approfondies, approximation affine, primitives et méthode d'Euler." }
+    { id: "trigonometry", name: "Convertisseur angulaire", icon: "π", baseCost: 8e14, baseRate: 1.6e9, costGrowth: 1.05, tier: 12, speciality: true, upgradeFactors: [3, 3, 4, 4, 5], description: "Radians, cercle trigonométrique, angles associés et équations." },
+    { id: "sinusoids", name: "Oscillateur harmonique", icon: "∿", baseCost: 1.4e16, baseRate: 2.8e10, costGrowth: 1.05, tier: 13, speciality: true, upgradeFactors: [3, 4, 4, 5, 5], description: "Amplitude, période, fréquence et phase des signaux sinusoïdaux." },
+    { id: "vectors", name: "Projecteur vectoriel", icon: "u·v", baseCost: 3e17, baseRate: 6e11, costGrowth: 1.05, tier: 14, speciality: true, upgradeFactors: [3, 4, 5, 5, 6], description: "Produit scalaire, projections, orthogonalité et théorème d'Al-Kashi." },
+    { id: "complexAlgebra", name: "Forge complexe", icon: "a+bi", baseCost: 7e18, baseRate: 1.4e13, costGrowth: 1.05, tier: 15, speciality: true, upgradeFactors: [4, 4, 5, 6, 6], description: "Forme algébrique, conjugué, module, affixes et opérations." },
+    { id: "complexTrig", name: "Polariseur complexe", icon: "[ρ,θ]", baseCost: 1.8e20, baseRate: 3.6e14, costGrowth: 1.05, tier: 16, speciality: true, upgradeFactors: [4, 5, 6, 7, 8], description: "Argument et passages entre formes algébrique et trigonométrique." },
+    { id: "advancedAnalysis", name: "Intégrateur différentiel", icon: "∫", baseCost: 5e21, baseRate: 1e16, costGrowth: 1.05, tier: 18, speciality: true, upgradeFactors: [5, 6, 7, 8, 10], description: "Dérivées approfondies, approximation affine, primitives et méthode d'Euler." }
   ];
 
   const CORE_WORKSHOP_COUNT = 12;
@@ -34,6 +34,9 @@
   const SYNERGY_PER_MILESTONE = 0.08;
   const CALIBRATION_FLUX_BASE = 50000;
   const CALIBRATION_FLUX_EXPONENT = 3;
+  const CALIBRATION_STEEPENING_POINT = 50;
+  const CALIBRATION_LATE_EXPONENT = 3.75;
+  const MAX_CYCLE_GAIN_RATIO = 0.75;
   const COMPACT_NUMBER_UNITS = [
     { value: 1e60, suffix: "Dc" },
     { value: 1e57, suffix: "Nod" },
@@ -185,7 +188,8 @@
   }
 
   function permanentMultiplier(calibration = 0) {
-    return 1 + Math.max(0, calibration) * 0.2;
+    const points = Math.max(0, calibration);
+    return 1 + (0.2 * points) / (1 + points / 1000);
   }
 
   function totalOwned(workshops = {}) {
@@ -303,26 +307,63 @@
     return `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits }).format(scaled)} ${unit.suffix}`;
   }
 
-  function calibrationPotential(lifetimeFlux = 0) {
-    const ratio = Math.max(0, lifetimeFlux) / CALIBRATION_FLUX_BASE;
-    return Math.floor(Math.pow(ratio, 1 / CALIBRATION_FLUX_EXPONENT) + 1e-9);
+  function calibrationFluxForPoints(points = 0) {
+    const bounded = Math.max(0, points);
+    if (bounded <= CALIBRATION_STEEPENING_POINT) {
+      return CALIBRATION_FLUX_BASE * Math.pow(bounded, CALIBRATION_FLUX_EXPONENT);
+    }
+    const transitionFlux = CALIBRATION_FLUX_BASE
+      * Math.pow(CALIBRATION_STEEPENING_POINT, CALIBRATION_FLUX_EXPONENT);
+    return transitionFlux * Math.pow(
+      bounded / CALIBRATION_STEEPENING_POINT,
+      CALIBRATION_LATE_EXPONENT
+    );
   }
 
-  function cycleTarget(calibration = 0) {
-    const nextPoint = Math.floor(Math.max(0, calibration)) + 1;
-    return CALIBRATION_FLUX_BASE * Math.pow(nextPoint, CALIBRATION_FLUX_EXPONENT);
+  function potentialFromTotalFlux(totalFlux = 0) {
+    const bounded = Math.max(0, totalFlux);
+    const transitionFlux = calibrationFluxForPoints(CALIBRATION_STEEPENING_POINT);
+    if (bounded <= transitionFlux) {
+      return Math.floor(Math.pow(bounded / CALIBRATION_FLUX_BASE, 1 / CALIBRATION_FLUX_EXPONENT) + 1e-9);
+    }
+    return Math.floor(CALIBRATION_STEEPENING_POINT * Math.pow(
+      bounded / transitionFlux,
+      1 / CALIBRATION_LATE_EXPONENT
+    ) + 1e-9);
   }
 
-  function cycleProgress(lifetimeFlux = 0, calibration = 0) {
+  function calibrationPotential(cycleFlux = 0, calibration = 0) {
     const earned = Math.floor(Math.max(0, calibration));
-    const previousTarget = CALIBRATION_FLUX_BASE * Math.pow(earned, CALIBRATION_FLUX_EXPONENT);
-    const nextTarget = cycleTarget(earned);
-    if (nextTarget <= previousTarget) return 0;
-    return Math.max(0, Math.min(1, (Math.max(0, lifetimeFlux) - previousTarget) / (nextTarget - previousTarget)));
+    return Math.max(earned, potentialFromTotalFlux(calibrationFluxForPoints(earned) + Math.max(0, cycleFlux)));
   }
 
-  function cycleGain(lifetimeFlux = 0, calibration = 0) {
-    return Math.max(0, calibrationPotential(lifetimeFlux) - Math.floor(Math.max(0, calibration)));
+  function maxCycleGain(calibration = 0) {
+    return Math.max(1, Math.ceil(Math.max(1, calibration) * MAX_CYCLE_GAIN_RATIO));
+  }
+
+  function cycleFluxTarget(calibration = 0, requestedGain = 1) {
+    const earned = Math.floor(Math.max(0, calibration));
+    const gain = Math.min(maxCycleGain(earned), Math.max(1, Math.floor(requestedGain)));
+    return calibrationFluxForPoints(earned + gain) - calibrationFluxForPoints(earned);
+  }
+
+  function cycleGain(cycleFlux = 0, calibration = 0) {
+    const rawGain = calibrationPotential(cycleFlux, calibration) - Math.floor(Math.max(0, calibration));
+    return Math.max(0, Math.min(rawGain, maxCycleGain(calibration)));
+  }
+
+  function cycleTarget(calibration = 0, cycleFlux = 0) {
+    const rawGain = calibrationPotential(cycleFlux, calibration) - Math.floor(Math.max(0, calibration));
+    return cycleFluxTarget(calibration, Math.min(maxCycleGain(calibration), rawGain + 1));
+  }
+
+  function cycleProgress(cycleFlux = 0, calibration = 0) {
+    const earnedThisCycle = cycleGain(cycleFlux, calibration);
+    if (earnedThisCycle >= maxCycleGain(calibration)) return 1;
+    const previousTarget = earnedThisCycle > 0 ? cycleFluxTarget(calibration, earnedThisCycle) : 0;
+    const nextTarget = cycleFluxTarget(calibration, earnedThisCycle + 1);
+    if (nextTarget <= previousTarget) return 0;
+    return Math.max(0, Math.min(1, (Math.max(0, cycleFlux) - previousTarget) / (nextTarget - previousTarget)));
   }
 
   return {
@@ -335,6 +376,9 @@
     SYNERGY_PER_MILESTONE,
     CALIBRATION_FLUX_BASE,
     CALIBRATION_FLUX_EXPONENT,
+    CALIBRATION_STEEPENING_POINT,
+    CALIBRATION_LATE_EXPONENT,
+    MAX_CYCLE_GAIN_RATIO,
     COMPACT_NUMBER_UNITS,
     CALIBRATION_UPGRADES,
     workshopById,
@@ -364,7 +408,10 @@
     decayHyperCharge,
     clickGain,
     formatCompactNumber,
+    calibrationFluxForPoints,
     calibrationPotential,
+    maxCycleGain,
+    cycleFluxTarget,
     cycleTarget,
     cycleProgress,
     cycleGain

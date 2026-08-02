@@ -5,8 +5,11 @@ import Model from "../game-model.js";
 const MAX_ACTIONS = 250_000;
 const MAX_SECONDS = 365 * 24 * 60 * 60;
 const DEFAULT_BALANCE = {
-  calibrationBase: Model.CALIBRATION_FLUX_BASE,
-  calibrationExponent: Model.CALIBRATION_FLUX_EXPONENT,
+  cycleGain: Model.cycleGain,
+  cycleFluxTarget: Model.cycleFluxTarget,
+  maxCycleGain: Model.maxCycleGain,
+  permanentMultiplier: Model.permanentMultiplier,
+  resetFactor: null,
   specialityCostGrowth: null,
   specialityBaseCosts: null
 };
@@ -70,6 +73,7 @@ function freshState(profile, balance) {
     profile,
     balance,
     flux: 0,
+    cycleFlux: 0,
     lifetimeFlux: 0,
     elapsed: 0,
     runElapsed: 0,
@@ -113,7 +117,7 @@ function hyperAverages(state, clicksPerSecond) {
 }
 
 function productionRate(state) {
-  const passive = baseProduction(state) * Model.permanentMultiplier(state.calibration);
+  const passive = baseProduction(state) * state.balance.permanentMultiplier(state.calibration);
   const clicks = clickRate(state);
   const click = Model.clickGain(
     state.totalClicks,
@@ -148,6 +152,7 @@ function advance(state, seconds) {
   const bounded = Math.max(1e-9, seconds);
   const gain = productionRate(state) * bounded;
   state.flux += gain;
+  state.cycleFlux += gain;
   state.lifetimeFlux += gain;
   state.totalClicks += clickRate(state) * bounded;
   state.elapsed += bounded;
@@ -177,10 +182,20 @@ function spendCalibrationUpgrades(state) {
 }
 
 function resetCycle(state) {
-  const gain = calibrationPotential(state) - state.calibration;
+  const gain = state.balance.cycleGain(state.cycleFlux, state.calibration);
   if (gain <= 0) return false;
+  state.milestones.push({
+    type: "cycle",
+    id: `cycle-${state.cycles + 1}`,
+    label: `Cycle ${state.cycles + 1}`,
+    seconds: state.elapsed,
+    cycles: state.cycles + 1,
+    calibrationBefore: state.calibration,
+    gain
+  });
   state.calibration += gain;
   state.flux = state.calibration * 25;
+  state.cycleFlux = 0;
   state.workshops = emptyWorkshopMap();
   state.workshopUpgrades = emptyWorkshopMap();
   state.reveal = state.specialityUnlocked ? Model.CORE_WORKSHOP_COUNT : 1;
@@ -211,10 +226,14 @@ function finalTargetReached(state) {
 }
 
 function shouldReset(state) {
-  const potential = calibrationPotential(state);
   if (!state.specialityUnlocked && readyForGateRun(state)) return false;
-  const target = Math.max(state.calibration + 1, Math.ceil(Math.max(1, state.calibration) * state.profile.prestigeFactor));
-  return potential >= target;
+  const resetFactor = state.balance.resetFactor || state.profile.prestigeFactor;
+  const target = Math.max(state.calibration + 1, Math.ceil(Math.max(1, state.calibration) * resetFactor));
+  const desiredGain = Math.min(
+    state.balance.maxCycleGain(state.calibration),
+    target - state.calibration
+  );
+  return state.balance.cycleGain(state.cycleFlux, state.calibration) >= desiredGain;
 }
 
 function actionProductionDelta(state, action) {
@@ -319,16 +338,14 @@ function unlockSpecialityIfReady(state) {
 
 function timeToNextReset(state, rate) {
   if (!state.specialityUnlocked && readyForGateRun(state)) return Infinity;
-  const target = Math.max(state.calibration + 1, Math.ceil(Math.max(1, state.calibration) * state.profile.prestigeFactor));
-  const targetFlux = state.balance.calibrationBase * target ** state.balance.calibrationExponent;
-  return Math.max(0, targetFlux - state.lifetimeFlux) / rate;
-}
-
-function calibrationPotential(state) {
-  return Math.floor(Math.pow(
-    Math.max(0, state.lifetimeFlux) / state.balance.calibrationBase,
-    1 / state.balance.calibrationExponent
-  ) + 1e-9);
+  const resetFactor = state.balance.resetFactor || state.profile.prestigeFactor;
+  const target = Math.max(state.calibration + 1, Math.ceil(Math.max(1, state.calibration) * resetFactor));
+  const desiredGain = Math.min(
+    state.balance.maxCycleGain(state.calibration),
+    target - state.calibration
+  );
+  const targetFlux = state.balance.cycleFluxTarget(state.calibration, desiredGain);
+  return Math.max(0, targetFlux - state.cycleFlux) / rate;
 }
 
 export function simulateProgression(profileName = "regulier", balanceOverrides = {}) {
@@ -341,7 +358,7 @@ export function simulateProgression(profileName = "regulier", balanceOverrides =
     const actions = availableActions(state);
     const action = chooseAction(state, actions);
     if (shouldReset(state)) {
-      const actualDelta = action?.productionDelta * Model.permanentMultiplier(state.calibration);
+      const actualDelta = action?.productionDelta * state.balance.permanentMultiplier(state.calibration);
       const payback = action && actualDelta > 0 ? action.cost / actualDelta : Infinity;
       if (!action || payback > state.profile.investmentWindow) {
         resetCycle(state);

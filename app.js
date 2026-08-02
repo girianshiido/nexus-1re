@@ -46,11 +46,12 @@
 
   const SUBSCRIPT_CHARACTERS = { "₀": "0", "₁": "1", "₂": "2", "₃": "3", "₄": "4", "₅": "5", "₆": "6", "₇": "7", "₈": "8", "₉": "9", "₊": "+", "₋": "−", "ₙ": "n" };
   const SUPERSCRIPT_CHARACTERS = { "⁰": "0", "¹": "1", "²": "2", "³": "3", "⁴": "4", "⁵": "5", "⁶": "6", "⁷": "7", "⁸": "8", "⁹": "9", "⁺": "+", "⁻": "−" };
-  const MATH_INLINE_PATTERN = /f′?\(x\)\s*=\s*[−-]?(?:√(?:\([^()]+\)|[A-Za-z]|\d+(?:[,.]\d+)?)|\d*π|\d+(?:[,.]\d+)?|[a-zω])\s*\/\s*(?:\([^()]+\)(?:²|³)?|\d+(?:[,.]\d+)?|[a-zω])|P\([^()]*\)\s*\/\s*P\([^()]*\)|(?:sin|cos)\([^()]+\)\s*\/\s*[a-zω]|norm\(vec\([^)]+\)\)|vec\([^)]+\)\s*·\s*vec\([^)]+\)|\(\s*vec\([^)]+\)\s*,\s*vec\([^)]+\)\s*\)|vec\([^)]+\)|(?:√?\d+|ρ)\(cos\([^()]+\)\s*\+\s*sin\([^()]+\)i\)|\[(?:√?\d+|ρ)\s*,\s*[^,\]]+\]|(?:cos|sin)\([^()]+\)|P\([^()]*\)(?:\s*=\s*[−-]?\d+(?:[,.]\d+)?)?|u[₀₁₂₃₄₅₆₇₈₉₊₋ₙ]+(?:\s*=\s*(?:u[₀₁₂₃₄₅₆₇₈₉₊₋ₙ]+|[−-]?\d+)(?:\s*[+−-]\s*\d+)?)?|(?:[−-]?\d*)?\(x\s*[+−-]\s*\d+\)(?:\(x\s*[+−-]\s*\d+\))+(?:\s*=\s*0)?|(?:f′?\(x\)|[xy])\s*[=<>≤≥]\s*[−-]?\d+(?:\s+(?:ou|et)\s*[xy]\s*[=<>≤≥]\s*[−-]?\d+)?|\d+\s*×\s*10[⁻⁰¹²³⁴⁵⁶⁷⁸⁹]+/g;
+  const MATH_INLINE_PATTERN = /f′?\(x\)\s*=\s*[−-]?(?:√(?:\([^()]+\)|[A-Za-z]|\d+(?:[,.]\d+)?)|\d*π|\d+(?:[,.]\d+)?|[a-zω])\s*\/\s*(?:\([^()]+\)(?:²|³)?|\d+(?:[,.]\d+)?|[a-zω])|P\([^()]*\)\s*\/\s*P\([^()]*\)|(?:sin|cos)\([^()]+\)\s*\/\s*[a-zω]|norm\(vec\([^)]+\)\)|vec\([^)]+\)\s*·\s*vec\([^)]+\)|\(\s*vec\([^)]+\)\s*,\s*vec\([^)]+\)\s*\)|vec\([^)]+\)|(?:√?\d+|ρ)\(cos\([^()]+\)\s*\+\s*sin\([^()]+\)i\)|\[(?:√?\d+|ρ)\s*,\s*[^,\]]+\]|(?:cos|sin)\([^()]+\)|P\([^()]*\)(?:\s*=\s*[−-]?\d+(?:[,.]\d+)?)?|u[₀₁₂₃₄₅₆₇₈₉₊₋ₙ]+(?:\s*=\s*(?:u[₀₁₂₃₄₅₆₇₈₉₊₋ₙ]+|[−-]?\d+)(?:\s*[+−-]\s*\d+)?)?|(?:[−-]?\d*)?\(x\s*[+−-]\s*\d+\)(?:\(x\s*[+−-]\s*\d+\))+(?:\s*=\s*0)?|[xy]\s*=\s*[−-]?(?:\d+(?:[,.]\d+)?)?x(?:\s*[+−-]\s*\d+(?:[,.]\d+)?)?|(?:f′?\(x\)|[xy])\s*[=<>≤≥]\s*[−-]?\d+(?:\s+(?:ou|et)\s*[xy]\s*[=<>≤≥]\s*[−-]?\d+)?|\d+\s*×\s*10[⁻⁰¹²³⁴⁵⁶⁷⁸⁹]+/g;
   const MATH_DECORATION_PATTERN = /norm\(vec\(([^)]+)\)\)|vec\(([^)]+)\)|(?<![A-Za-zÀ-ÿ])([−-]?(?:√(?:\([^()]+\)|[A-Za-z]|\d+(?:[,.]\d+)?)|\d*π|\d+(?:[,.]\d+)?|[a-zω]|(?:sin|cos)\([^()]+\)|\([^()]+\)))\s*\/\s*(\([^()]+\)(?:²|³)?|\d+(?:[,.]\d+)?|[a-zω])(?![A-Za-zÀ-ÿ])|√(\([^()]+\)|[A-Za-z]|\d+(?:[,.]\d+)?)/gi;
 
   function appendMathCharacters(target, text) {
-    const fragments = String(text).split(/([₀₁₂₃₄₅₆₇₈₉₊₋ₙ]+|[⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻]+)/g);
+    const normalized = String(text).replace(/(^|[\s=(;,])-(?=[0-9xyzuiρπ])/gi, "$1−");
+    const fragments = normalized.split(/([₀₁₂₃₄₅₆₇₈₉₊₋ₙ]+|[⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻]+)/g);
     fragments.forEach(fragment => {
       if (!fragment) return;
       const subscript = [...fragment].every(character => SUBSCRIPT_CHARACTERS[character] !== undefined);
@@ -81,7 +82,11 @@
     const normalizedNumerator = numerator.replace("-", "−");
     const isNegative = normalizedNumerator.startsWith("−");
     appendDecoratedMath(top, isNegative ? normalizedNumerator.slice(1) : normalizedNumerator);
-    appendDecoratedMath(bottom, denominator);
+    const normalizedDenominator = denominator.trim();
+    const displayedDenominator = /^\([^()]+\)$/.test(normalizedDenominator)
+      ? normalizedDenominator.slice(1, -1)
+      : normalizedDenominator;
+    appendDecoratedMath(bottom, displayedDenominator);
     fraction.append(top, bottom);
     if (isNegative) {
       const signedFraction = document.createElement("span");
@@ -135,7 +140,7 @@
 
   function renderMathText(target, text) {
     const fragment = document.createDocumentFragment();
-    const source = String(text);
+    const source = String(text).replace(/\bh\s*=\s*[−-]?\d+(?:[,.]\d+)?/g, formula => formula.replace(/\s/g, "\u00a0"));
     let cursor = 0;
     for (const match of source.matchAll(MATH_INLINE_PATTERN)) {
       appendDecoratedMath(fragment, source.slice(cursor, match.index));
@@ -1478,7 +1483,7 @@
   function showConfirm(mode) {
     confirmMode = mode;
     if (mode === "cycle") {
-      const gain = Model.cycleGain(state.lifetimeFlux, state.calibration);
+      const gain = Model.cycleGain(state.cycleFlux, state.calibration);
       const availableAfter = Model.availableCalibration(state.calibration + gain, state.calibrationUpgrades);
       dom.confirmKicker.textContent = "Cycle d'étalonnage";
       dom.confirmTitle.textContent = "Reconfigurer le laboratoire ?";
@@ -1533,7 +1538,7 @@
   }
 
   function startNewCycle() {
-    const gain = Model.cycleGain(state.lifetimeFlux, state.calibration);
+    const gain = Model.cycleGain(state.cycleFlux, state.calibration);
     if (gain < 1) return;
     state.calibration += gain;
     state.cycle += 1;
@@ -1976,9 +1981,9 @@
     const boost = state.boostUntil > nowValue;
     const cadence = hyperStats();
     const owned = Model.totalOwned(state.workshops);
-    const cycleTarget = Model.cycleTarget(state.calibration);
-    const cycleGain = Model.cycleGain(state.lifetimeFlux, state.calibration);
-    const cycleProgress = Model.cycleProgress(state.lifetimeFlux, state.calibration);
+    const cycleTarget = Model.cycleTarget(state.calibration, state.cycleFlux);
+    const cycleGain = Model.cycleGain(state.cycleFlux, state.calibration);
+    const cycleProgress = Model.cycleProgress(state.cycleFlux, state.calibration);
     const availableSubskills = accessibleSubskills();
     const masteryCounts = Learning.summarize(availableSubskills, state.learning, nowValue);
     const unlocked = unlockedWorkshops();
@@ -1990,11 +1995,13 @@
     dom.calibration.textContent = `${format(availableCalibration, { digits: 0 })}/${format(state.calibration, { digits: 0 })} pts`;
     dom.cycle.textContent = state.cycle;
     dom.cycleRing.textContent = state.cycle;
-    dom.cycleProgressText.textContent = `${format(state.lifetimeFlux)} / ${format(cycleTarget)}`;
+    dom.cycleProgressText.textContent = `${format(state.cycleFlux)} / ${format(cycleTarget)}`;
     const cycleProgressWidth = `${cycleProgress * 100}%`;
     dom.cycleProgressBar.style.width = cycleProgressWidth;
     dom.networkCycleProgressBar.style.width = cycleProgressWidth;
-    dom.cycleGain.textContent = plural(cycleGain, "point");
+    dom.cycleGain.textContent = cycleGain >= Model.maxCycleGain(state.calibration)
+      ? `${plural(cycleGain, "point")} · capacité atteinte`
+      : plural(cycleGain, "point");
     dom.permanentMultiplier.textContent = `Production permanente ×${format(permanentMultiplier())}`;
     dom.cycleButton.disabled = cycleGain < 1;
     dom.masteryTotal.textContent = `${masteryCounts.mastered}/${availableSubskills.length}`;
