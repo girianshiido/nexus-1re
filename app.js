@@ -78,10 +78,22 @@
     fraction.className = "math-fraction";
     const top = document.createElement("span");
     const bottom = document.createElement("span");
-    appendDecoratedMath(top, numerator.replace("-", "−"));
+    const normalizedNumerator = numerator.replace("-", "−");
+    const isNegative = normalizedNumerator.startsWith("−");
+    appendDecoratedMath(top, isNegative ? normalizedNumerator.slice(1) : normalizedNumerator);
     appendDecoratedMath(bottom, denominator);
     fraction.append(top, bottom);
-    target.append(fraction);
+    if (isNegative) {
+      const signedFraction = document.createElement("span");
+      signedFraction.className = "math-signed-fraction";
+      const sign = document.createElement("span");
+      sign.className = "math-fraction-sign";
+      sign.textContent = "−";
+      signedFraction.append(sign, fraction);
+      target.append(signedFraction);
+    } else {
+      target.append(fraction);
+    }
   }
 
   function appendRadical(target, radicand) {
@@ -130,6 +142,7 @@
       const formula = document.createElement("span");
       formula.className = "math-inline";
       appendDecoratedMath(formula, match[0]);
+      if (formula.querySelector(".math-fraction")) formula.classList.add("math-inline-fraction");
       fragment.append(formula);
       cursor = match.index + match[0].length;
     }

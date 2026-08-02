@@ -419,6 +419,7 @@ dialog::backdrop { background: rgba(1, 9, 14, 0.82); backdrop-filter: blur(8px);
 .mini-bars small { padding-top: 6px; color: var(--muted); font-size: 10px; text-align: center; }
 .question-text { min-height: 60px; margin: 0 0 22px; font-size: clamp(19px, 3vw, 27px); font-weight: 700; line-height: 1.35; text-align: center; overflow-wrap: normal; word-break: normal; }
 .math-inline { display: inline-block; white-space: nowrap; }
+.math-inline-fraction { display: inline-flex; align-items: center; vertical-align: middle; }
 .math-sub, .math-sup { font-family: inherit; font-size: 0.65em; line-height: 0; }
 .math-sub { vertical-align: -0.34em; }
 .math-sup { vertical-align: 0.52em; }
@@ -428,6 +429,9 @@ dialog::backdrop { background: rgba(1, 9, 14, 0.82); backdrop-filter: blur(8px);
 .math-fraction { display: inline-grid; grid-template-rows: auto auto; align-items: center; min-width: 1.15em; margin: 0 0.05em; vertical-align: middle; font-size: 0.88em; line-height: 1.02; text-align: center; white-space: nowrap; }
 .math-fraction > span:first-child { padding: 0 0.12em 0.06em; border-bottom: 0.065em solid currentColor; }
 .math-fraction > span:last-child { padding: 0.05em 0.12em 0; }
+.math-signed-fraction { display: inline-flex; align-items: center; gap: 0.05em; vertical-align: middle; white-space: nowrap; }
+.math-signed-fraction > .math-fraction { vertical-align: 0; }
+.math-fraction-sign { line-height: 1; }
 .math-radical { display: inline-flex; align-items: flex-start; vertical-align: -0.08em; line-height: 1; white-space: nowrap; }
 .math-radical-sign { margin-right: -0.04em; font-size: 1.18em; line-height: 0.94; }
 .math-radicand { min-width: 0.62em; padding: 0.04em 0.08em 0 0.04em; border-top: 0.07em solid currentColor; line-height: 0.96; }

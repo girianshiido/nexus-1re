@@ -59,11 +59,15 @@ assert.match(app, /renderMathText/, "les formules doivent être rendues dans des
 assert.match(app, /SUBSCRIPT_CHARACTERS/, "les indices doivent être redessinés avec la police du jeu");
 assert.match(app, /appendRadical/, "les racines doivent disposer d'un rendu couvrant tout le radicande");
 assert.match(app, /appendFraction/, "les quotients mathématiques doivent disposer de vraies barres de fraction");
+assert.match(app, /math-inline-fraction/, "une formule contenant une fraction doit être centrée comme un bloc unique");
+assert.match(app, /math-signed-fraction/, "le signe d'une fraction négative doit être placé devant la fraction");
 assert.match(app, /appendVector/, "les vecteurs doivent être surmontés d'une flèche");
 assert.match(styles, /\.math-inline[^]*white-space:\s*nowrap/, "une formule ne doit pas être coupée à l'intérieur sur mobile");
 assert.match(styles, /\.math-radicand[^}]*border-top/, "le trait d'une racine doit recouvrir le radicande");
 assert.match(styles, /\.math-fraction[^}]*grid-template-rows/, "les quotients doivent être empilés en fractions");
 assert.match(styles, /\.math-fraction[^}]*vertical-align:\s*middle/, "les fractions doivent être centrées verticalement dans les énoncés et les réponses");
+assert.match(styles, /\.math-inline-fraction[^}]*align-items:\s*center/, "les fractions incluses dans une formule doivent être centrées avec les autres symboles");
+assert.match(styles, /\.math-signed-fraction[^}]*align-items:\s*center/, "le signe moins doit être centré devant une fraction négative");
 assert.match(styles, /\.math-vector::before[^}]*content:\s*"→"/, "une flèche doit être dessinée au-dessus des vecteurs");
 assert.equal((html.match(/data-tab="[^"]+"[^>]*role="tab"/g) || []).length, 4, "quatre onglets doivent séparer le noyau, les ateliers, les améliorations et le réseau");
 assert.equal((html.match(/data-protocol-view="[^"]+"/g) || []).length, 2, "les protocoles doivent être séparés entre puissance et confort");
@@ -132,6 +136,8 @@ assert.doesNotMatch(exerciseLabApp, /\$\{subskill\.label\} — \$\{subskill\.id\
 assert.match(exerciseLabStyles, /\.math-radicand[^}]*border-top/, "le laboratoire doit partager le rendu complet des racines");
 assert.match(exerciseLabStyles, /\.math-fraction[^}]*grid-template-rows/, "le laboratoire doit partager le rendu des fractions");
 assert.match(exerciseLabStyles, /\.math-fraction[^}]*vertical-align:\s*middle/, "le laboratoire doit centrer verticalement les fractions");
+assert.match(exerciseLabStyles, /\.math-inline-fraction[^}]*align-items:\s*center/, "le laboratoire doit centrer les fractions dans les formules composées");
+assert.match(exerciseLabStyles, /\.math-signed-fraction[^}]*align-items:\s*center/, "le laboratoire doit placer le signe moins devant les fractions négatives");
 assert.match(exerciseLabStyles, /\.math-vector::before[^}]*content:\s*"→"/, "le laboratoire doit partager le rendu des vecteurs");
 
 const manifest = JSON.parse(manifestText);
