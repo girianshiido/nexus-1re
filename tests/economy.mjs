@@ -117,10 +117,10 @@ assert.ok(
 );
 
 assert.equal(model.cycleTarget(0), 50000, "le premier point doit demander 50 000 flux cumulés");
-assert.equal(model.calibrationPotential(854810000), 11, "855 millions de flux ne doivent plus produire une centaine de points");
-assert.equal(model.cycleGain(854810000, 0), 11);
-assert.equal(model.cycleGain(854810000, 5), 6, "les points déjà obtenus ne doivent pas être gagnés une seconde fois");
-assert.equal(model.cycleGain(854810000, 11), 0);
+assert.equal(model.calibrationPotential(854810000), 25, "855 millions de flux ne doivent plus produire une centaine de points");
+assert.equal(model.cycleGain(854810000, 0), 25);
+assert.equal(model.cycleGain(854810000, 5), 20, "les points déjà obtenus ne doivent pas être gagnés une seconde fois");
+assert.equal(model.cycleGain(854810000, 25), 0);
 assert.equal(model.cycleProgress(0, 0), 0);
 assert.equal(model.cycleProgress(model.cycleTarget(0), 0), 1);
 
@@ -132,7 +132,10 @@ for (let point = 1; point <= 10; point += 1) {
 const delayedFlux = model.CALIBRATION_FLUX_BASE * 10 ** model.CALIBRATION_FLUX_EXPONENT;
 const delayedCalibration = model.cycleGain(delayedFlux, 0);
 assert.equal(frequentCalibration, delayedCalibration, "redémarrer souvent ou tard doit donner le même capital à production cumulée égale");
-assert.equal(model.calibrationPotential(model.CALIBRATION_FLUX_BASE * 200 ** 4), 200);
+assert.equal(
+  model.calibrationPotential(model.CALIBRATION_FLUX_BASE * 200 ** model.CALIBRATION_FLUX_EXPONENT),
+  200
+);
 assert.match(model.formatCompactNumber(1e12), /^1\sBn$/);
 assert.match(model.formatCompactNumber(1e15), /^1\sBd$/, "un billiard ne doit pas être affiché comme 1 000 billions");
 assert.match(model.formatCompactNumber(1e18), /^1\sTn$/, "le trillion doit suivre le billiard");

@@ -39,6 +39,7 @@ Le jeu peut être installé sur l'écran d'accueil : via le menu du navigateur s
 - Des perturbations occasionnelles proposent de une à trois questions uniquement parmi les notions achetées. Une réponse rapide améliore la récompense, mais une erreur ne retire aucune ressource.
 - Chaque bonne réponse augmente la maîtrise de la notion et renforce légèrement son atelier.
 - Un nouveau cycle remet à zéro le flux et les ateliers, conserve la maîtrise et accorde un multiplicateur permanent. Les points disponibles dépendent du flux cumulé depuis le début : redémarrer tôt ou tard donne le même capital à production totale égale.
+- La courbe complète est contrôlée par `scripts/simulate-progression.mjs` et documentée dans `PROGRESSION-ECONOMIE.md` ; le profil régulier vise environ 38 heures de progression effective jusqu'aux 18 ateliers à 200 unités.
 - Les points d'étalonnage peuvent être investis sans réduire le multiplicateur déjà gagné.
 - Chaque question possède une référence et peut être signalée localement après la réponse.
 - La progression est enregistrée localement dans le navigateur.
