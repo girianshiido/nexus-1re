@@ -7,6 +7,7 @@ const MAX_SECONDS = 365 * 24 * 60 * 60;
 const DEFAULT_BALANCE = {
   cycleGain: Model.cycleGain,
   cycleFluxTarget: Model.cycleFluxTarget,
+  cycleReward: Model.cycleReward,
   maxCycleGain: Model.maxCycleGain,
   permanentMultiplier: Model.permanentMultiplier,
   resetFactor: null,
@@ -182,7 +183,7 @@ function spendCalibrationUpgrades(state) {
 }
 
 function resetCycle(state) {
-  const gain = state.balance.cycleGain(state.cycleFlux, state.calibration);
+  const gain = state.balance.cycleGain(state.cycleFlux, state.calibration, state.cycles);
   if (gain <= 0) return false;
   state.milestones.push({
     type: "cycle",
@@ -190,6 +191,7 @@ function resetCycle(state) {
     label: `Cycle ${state.cycles + 1}`,
     seconds: state.elapsed,
     cycles: state.cycles + 1,
+    cycleBefore: state.cycles,
     calibrationBefore: state.calibration,
     gain
   });
@@ -227,13 +229,12 @@ function finalTargetReached(state) {
 
 function shouldReset(state) {
   if (!state.specialityUnlocked && readyForGateRun(state)) return false;
-  const resetFactor = state.balance.resetFactor || state.profile.prestigeFactor;
-  const target = Math.max(state.calibration + 1, Math.ceil(Math.max(1, state.calibration) * resetFactor));
-  const desiredGain = Math.min(
-    state.balance.maxCycleGain(state.calibration),
-    target - state.calibration
-  );
-  return state.balance.cycleGain(state.cycleFlux, state.calibration) >= desiredGain;
+  const gain = state.balance.cycleGain(state.cycleFlux, state.calibration, state.cycles);
+  if (gain <= 0) return false;
+  if (!state.specialityUnlocked) {
+    return Model.availableCalibration(state.calibration, state.calibrationUpgrades) < Model.SPECIALITY_UNLOCK_COST;
+  }
+  return false;
 }
 
 function actionProductionDelta(state, action) {
@@ -338,13 +339,7 @@ function unlockSpecialityIfReady(state) {
 
 function timeToNextReset(state, rate) {
   if (!state.specialityUnlocked && readyForGateRun(state)) return Infinity;
-  const resetFactor = state.balance.resetFactor || state.profile.prestigeFactor;
-  const target = Math.max(state.calibration + 1, Math.ceil(Math.max(1, state.calibration) * resetFactor));
-  const desiredGain = Math.min(
-    state.balance.maxCycleGain(state.calibration),
-    target - state.calibration
-  );
-  const targetFlux = state.balance.cycleFluxTarget(state.calibration, desiredGain);
+  const targetFlux = state.balance.cycleFluxTarget(state.calibration, state.cycles);
   return Math.max(0, targetFlux - state.cycleFlux) / rate;
 }
 

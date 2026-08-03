@@ -26,18 +26,9 @@ La racine quatrième appliquée au flux cumulé ralentissait trop fortement les 
 
 ## Recalibrage retenu
 
-- La courbe d'étalonnage utilise une racine cubique au lieu d'une racine quatrième. Le premier point demande toujours 50 000 flux.
-- À 854,81 millions de flux cumulés, le capital potentiel passe de 11 à 25 points : l'ancienne faille à plus de cent points ne revient pas.
-- Les croissances de coût de la Forge complexe, du Polariseur complexe et de l'Intégrateur différentiel passent respectivement de 1,195 / 1,200 / 1,205 à 1,190 / 1,191 / 1,192.
-- Les prix de départ et les multiplicateurs d'amélioration ×3 à ×10 de la Spécialité sont conservés.
+- Chaque cycle possède désormais un seul objectif : une fois la barre pleine, elle reste pleine et le surplus de flux ne donne aucun point supplémentaire.
+- La récompense est déterministe : cycle 1 = +1 point, cycle 2 = +2 points, cycle 3 = +3 points, etc.
+- Le seuil du cycle `n` est calculé sur le cumul théorique `1 + 2 + ... + n`, afin que les cycles progressent sans permettre de remplir la même barre des centaines de fois.
+- À la sauvegarde de test du 3 août, le cycle 14 rapporte donc +14 points, même si le flux produit dépasse très largement le seuil.
 
-## Courbe après recalibrage
-
-| Profil | Ouverture Spécialité | Premier Intégrateur différentiel | Fin économique | Cycles |
-|---|---:|---:|---:|---:|
-| Tranquille | 13,0 h | 15,0 h | 50,0 h | 39 |
-| Régulier | 5,4 h | 6,5 h | 37,6 h | 45 |
-| Complétiste | 3,7 h | 4,1 h | 19,1 h | 50 |
-
-La fin reste nettement plus longue que l'ouverture de la Spécialité, mais aucun profil ne rencontre désormais un mur de plusieurs mois. Le test `tests/progression.mjs` protège une cible de 24 à 60 heures pour le profil régulier.
-
+La simulation complète de fin économique doit être recalibrée séparément, car l'ancien simulateur supposait des cycles à gains variables et une stratégie d'attente du plafond.

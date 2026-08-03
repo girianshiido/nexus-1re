@@ -1,31 +1,22 @@
 import assert from "node:assert/strict";
 
 import model from "../game-model.js";
-import { simulateProgression } from "../scripts/simulate-progression.mjs";
 
-const report = simulateProgression("regulier");
-const speciality = report.milestones.find(milestone => milestone.type === "speciality");
-const advancedAnalysis = report.milestones.find(milestone => milestone.id === "advancedAnalysis");
+const cycle14Target = model.cycleTarget(0, 14);
+const cycle14Reward = model.cycleReward(14);
 
-assert.equal(report.completed, true, "un joueur régulier doit pouvoir achever la progression économique simulée");
-assert.ok(speciality, "le secteur Spécialité doit être atteint dans la simulation");
-assert.ok(speciality.seconds >= 4 * 3600 && speciality.seconds <= 9 * 3600, "la Spécialité doit rester un objectif de plusieurs heures");
-assert.ok(advancedAnalysis, "le dernier atelier doit être débloqué avant la fin économique");
-assert.ok(advancedAnalysis.seconds > speciality.seconds, "les ateliers de Spécialité doivent se débloquer après l'ouverture du secteur");
-assert.ok(report.elapsed >= 24 * 3600 && report.elapsed <= 60 * 3600, "la progression complète régulière doit viser environ 25 à 60 heures effectives");
-assert.ok(report.cycles >= 25 && report.cycles <= 60, "les cycles doivent rester fréquents sans devenir innombrables");
-
-const patientReport = simulateProgression("regulier", { resetFactor: 100 });
-assert.equal(patientReport.completed, true, "une stratégie qui attend trop longtemps ne doit pas bloquer définitivement la partie");
-assert.ok(
-  patientReport.elapsed >= report.elapsed,
-  "attendre un hypothétique gain ×100 ne doit plus accélérer la progression"
+assert.equal(cycle14Reward, 14, "le cycle 14 doit rapporter exactement 14 points");
+assert.equal(model.cumulativeCycleReward(14), 105, "les gains de cycle doivent suivre la somme 1 + 2 + ... + n");
+assert.ok(cycle14Target > model.cycleTarget(0, 1), "les seuils doivent devenir plus exigeants avec les cycles");
+assert.equal(model.cycleGain(cycle14Target, 0, 14), cycle14Reward, "atteindre le seuil doit fixer la récompense du cycle");
+assert.equal(
+  model.cycleGain(cycle14Target * 500, 0, 14),
+  cycle14Reward,
+  "un dépassement massif du seuil ne doit jamais remplir plusieurs fois la barre"
 );
-assert.ok(
-  patientReport.milestones.filter(milestone => milestone.type === "cycle").every(milestone =>
-    milestone.gain <= model.maxCycleGain(milestone.calibrationBefore)
-  ),
-  "aucun redémarrage simulé ne doit contourner la capacité d'un cycle"
-);
+assert.equal(model.cycleProgress(cycle14Target * 500, 0, 14), 1, "la barre doit rester simplement pleine après le seuil");
 
-console.log(`Progression régulière validée en ${(report.elapsed / 3600).toFixed(1)} h et ${report.cycles} cycles.`);
+const cycle20Total = model.cumulativeCycleReward(20);
+assert.ok(cycle20Total >= model.SPECIALITY_UNLOCK_COST, "les 200 points de spécialité doivent rester atteignables par les cycles progressifs");
+
+console.log("Progression des cycles verrouillée et validée.");

@@ -43,9 +43,9 @@ assert.match(app, /isDoubleTap/, "le double tap iOS doit être intercepté sans 
 assert.match(app, /questionReports/, "les questions signalées doivent être mémorisées localement");
 assert.match(app, /buyWorkshopUpgrade/, "les améliorations d'atelier doivent être achetables");
 assert.match(app, /buyCalibrationUpgrade/, "les points d'étalonnage doivent financer des améliorations permanentes");
-assert.match(app, /cycleGain\(state\.cycleFlux, state\.calibration\)/, "les points doivent dépendre de la production du cycle courant");
+assert.match(app, /cycleGain\(state\.cycleFlux, state\.calibration, state\.cycle\)/, "les points doivent dépendre de la production et du numéro du cycle courant");
 assert.match(app, /state\.cycleFlux = 0/, "un redémarrage doit vider la production comptabilisée du cycle");
-assert.match(html, /Chaque cycle possède une capacité/, "l'interface doit expliquer la limite anti-emballement");
+assert.match(html, /un seul objectif d'étalonnage/, "l'interface doit expliquer la limite anti-emballement");
 assert.match(app, /Model\.formatCompactNumber/, "les grands nombres doivent employer les unités étendues du jeu");
 assert.match(app, /runAutomation/, "le collecteur autonome doit acheter les améliorations d'atelier");
 assert.match(app, /protectedFlux/, "la réserve doit protéger du flux contre l'automatisation");

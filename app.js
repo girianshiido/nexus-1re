@@ -1483,7 +1483,7 @@
   function showConfirm(mode) {
     confirmMode = mode;
     if (mode === "cycle") {
-      const gain = Model.cycleGain(state.cycleFlux, state.calibration);
+      const gain = Model.cycleGain(state.cycleFlux, state.calibration, state.cycle);
       const availableAfter = Model.availableCalibration(state.calibration + gain, state.calibrationUpgrades);
       dom.confirmKicker.textContent = "Cycle d'étalonnage";
       dom.confirmTitle.textContent = "Reconfigurer le laboratoire ?";
@@ -1538,7 +1538,7 @@
   }
 
   function startNewCycle() {
-    const gain = Model.cycleGain(state.cycleFlux, state.calibration);
+    const gain = Model.cycleGain(state.cycleFlux, state.calibration, state.cycle);
     if (gain < 1) return;
     state.calibration += gain;
     state.cycle += 1;
@@ -1981,9 +1981,9 @@
     const boost = state.boostUntil > nowValue;
     const cadence = hyperStats();
     const owned = Model.totalOwned(state.workshops);
-    const cycleTarget = Model.cycleTarget(state.calibration, state.cycleFlux);
-    const cycleGain = Model.cycleGain(state.cycleFlux, state.calibration);
-    const cycleProgress = Model.cycleProgress(state.cycleFlux, state.calibration);
+    const cycleTarget = Model.cycleTarget(state.calibration, state.cycle);
+    const cycleGain = Model.cycleGain(state.cycleFlux, state.calibration, state.cycle);
+    const cycleProgress = Model.cycleProgress(state.cycleFlux, state.calibration, state.cycle);
     const availableSubskills = accessibleSubskills();
     const masteryCounts = Learning.summarize(availableSubskills, state.learning, nowValue);
     const unlocked = unlockedWorkshops();
@@ -1999,9 +1999,9 @@
     const cycleProgressWidth = `${cycleProgress * 100}%`;
     dom.cycleProgressBar.style.width = cycleProgressWidth;
     dom.networkCycleProgressBar.style.width = cycleProgressWidth;
-    dom.cycleGain.textContent = cycleGain >= Model.maxCycleGain(state.calibration)
-      ? `${plural(cycleGain, "point")} · capacité atteinte`
-      : plural(cycleGain, "point");
+    dom.cycleGain.textContent = cycleGain > 0
+      ? `Cycle atteint · ${plural(cycleGain, "point")}`
+      : `${plural(Model.cycleReward(state.cycle), "point")} au prochain cycle`;
     dom.permanentMultiplier.textContent = `Production permanente ×${format(permanentMultiplier())}`;
     dom.cycleButton.disabled = cycleGain < 1;
     dom.masteryTotal.textContent = `${masteryCounts.mastered}/${availableSubskills.length}`;

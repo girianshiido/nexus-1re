@@ -125,19 +125,22 @@ assert.equal(model.cycleGain(50000, 0), 1, "le premier seuil doit ouvrir le prem
 assert.equal(model.maxCycleGain(0), 1, "le premier cycle ne doit jamais rapporter une centaine de points");
 assert.equal(model.cycleGain(854810000, 0), 1, "un énorme dépassement initial doit rester limité à la capacité du cycle");
 assert.equal(model.cycleGain(0, 25), 0, "un nouveau cycle doit repartir sans gain déjà acquis");
-assert.equal(model.maxCycleGain(100), 75, "un cycle avancé peut être prolongé sans permettre un saut ×100");
+assert.equal(model.cycleReward(14), 14, "le cycle 14 doit annoncer 14 points d'étalonnage");
+assert.equal(model.cumulativeCycleReward(14), 105, "les récompenses de cycles doivent suivre 1 + 2 + ... + n");
+assert.equal(model.maxCycleGain(100, 14), 14, "la capacité d'un cycle doit dépendre du cycle, pas du dépassement de flux");
 assert.equal(
-  model.cycleGain(model.cycleFluxTarget(100, 75), 100),
-  75,
-  "la capacité annoncée doit être atteignable exactement"
+  model.cycleGain(model.cycleFluxTarget(100, 14), 100, 14),
+  14,
+  "la récompense annoncée doit être atteignable exactement"
+);
+assert.equal(
+  model.cycleGain(model.cycleFluxTarget(100, 14) * 500, 100, 14),
+  14,
+  "remplir virtuellement la barre des centaines de fois ne doit pas augmenter la récompense"
 );
 assert.equal(model.cycleProgress(0, 0), 0);
 assert.equal(model.cycleProgress(model.cycleTarget(0), 0), 1);
-
-assert.ok(
-  model.cycleFluxTarget(100, 75) > model.cycleFluxTarget(100, 1) * 100,
-  "prolonger fortement un cycle doit coûter beaucoup plus que franchir son prochain seuil"
-);
+assert.equal(model.cycleProgress(model.cycleTarget(0, 14), 0, 14), 1);
 assert.ok(
   model.calibrationFluxForPoints(100) > model.CALIBRATION_FLUX_BASE * 100 ** model.CALIBRATION_FLUX_EXPONENT,
   "la courbe doit se raidir après les premiers cycles"

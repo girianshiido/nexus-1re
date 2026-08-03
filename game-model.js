@@ -337,33 +337,38 @@
     return Math.max(earned, potentialFromTotalFlux(calibrationFluxForPoints(earned) + Math.max(0, cycleFlux)));
   }
 
-  function maxCycleGain(calibration = 0) {
-    return Math.max(1, Math.ceil(Math.max(1, calibration) * MAX_CYCLE_GAIN_RATIO));
+  function cycleReward(cycle = 1) {
+    return Math.max(1, Math.floor(Number(cycle) || 1));
   }
 
-  function cycleFluxTarget(calibration = 0, requestedGain = 1) {
-    const earned = Math.floor(Math.max(0, calibration));
-    const gain = Math.min(maxCycleGain(earned), Math.max(1, Math.floor(requestedGain)));
-    return calibrationFluxForPoints(earned + gain) - calibrationFluxForPoints(earned);
+  function cumulativeCycleReward(cycle = 1) {
+    const currentCycle = Math.max(0, Math.floor(Number(cycle) || 0));
+    return currentCycle * (currentCycle + 1) / 2;
   }
 
-  function cycleGain(cycleFlux = 0, calibration = 0) {
-    const rawGain = calibrationPotential(cycleFlux, calibration) - Math.floor(Math.max(0, calibration));
-    return Math.max(0, Math.min(rawGain, maxCycleGain(calibration)));
+  function maxCycleGain(calibration = 0, cycle = 1) {
+    return cycleReward(cycle);
   }
 
-  function cycleTarget(calibration = 0, cycleFlux = 0) {
-    const rawGain = calibrationPotential(cycleFlux, calibration) - Math.floor(Math.max(0, calibration));
-    return cycleFluxTarget(calibration, Math.min(maxCycleGain(calibration), rawGain + 1));
+  function cycleFluxTarget(calibration = 0, cycle = 1) {
+    const currentCycle = Math.max(1, Math.floor(Number(cycle) || 1));
+    const totalAfter = cumulativeCycleReward(currentCycle);
+    const totalBefore = cumulativeCycleReward(currentCycle - 1);
+    return calibrationFluxForPoints(totalAfter) - calibrationFluxForPoints(totalBefore);
   }
 
-  function cycleProgress(cycleFlux = 0, calibration = 0) {
-    const earnedThisCycle = cycleGain(cycleFlux, calibration);
-    if (earnedThisCycle >= maxCycleGain(calibration)) return 1;
-    const previousTarget = earnedThisCycle > 0 ? cycleFluxTarget(calibration, earnedThisCycle) : 0;
-    const nextTarget = cycleFluxTarget(calibration, earnedThisCycle + 1);
-    if (nextTarget <= previousTarget) return 0;
-    return Math.max(0, Math.min(1, (Math.max(0, cycleFlux) - previousTarget) / (nextTarget - previousTarget)));
+  function cycleGain(cycleFlux = 0, calibration = 0, cycle = 1) {
+    return Math.max(0, cycleFlux) >= cycleFluxTarget(calibration, cycle) ? cycleReward(cycle) : 0;
+  }
+
+  function cycleTarget(calibration = 0, cycle = 1) {
+    return cycleFluxTarget(calibration, cycle);
+  }
+
+  function cycleProgress(cycleFlux = 0, calibration = 0, cycle = 1) {
+    const target = cycleFluxTarget(calibration, cycle);
+    if (target <= 0) return 0;
+    return Math.max(0, Math.min(1, Math.max(0, cycleFlux) / target));
   }
 
   return {
@@ -410,6 +415,8 @@
     formatCompactNumber,
     calibrationFluxForPoints,
     calibrationPotential,
+    cycleReward,
+    cumulativeCycleReward,
     maxCycleGain,
     cycleFluxTarget,
     cycleTarget,
