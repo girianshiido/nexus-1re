@@ -1593,7 +1593,6 @@
       card.className = `workshop-card${workshop.speciality ? " speciality-workshop" : ""}`;
       card.dataset.workshop = workshop.id;
       card.innerHTML = `
-        <span class="workshop-count" id="count-bg-${workshop.id}">0</span>
         <div class="workshop-icon" aria-hidden="true">${workshop.icon}</div>
         <div class="workshop-info">
           <h3>${workshop.name}</h3>
@@ -1605,7 +1604,10 @@
             <span id="milestone-${workshop.id}">Palier à 10</span>
           </div>
         </div>
-        <button class="workshop-buy" data-buy="${workshop.id}" type="button"><span>Acheter</span><small>${format(workshop.baseCost)} flux</small></button>`;
+        <div class="workshop-actions">
+          <span class="workshop-count" id="count-bg-${workshop.id}">0</span>
+          <button class="workshop-buy" data-buy="${workshop.id}" type="button"><span>Acheter</span><small>${format(workshop.baseCost)} flux</small></button>
+        </div>`;
       fragment.append(card);
     });
     const teaser = document.createElement("article");
