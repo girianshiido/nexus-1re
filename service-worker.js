@@ -1,4 +1,4 @@
-const CACHE_NAME = "nexus-laboratoire-v59";
+const CACHE_NAME = "nexus-laboratoire-v60";
 const APP_SHELL = [
   "./index.html",
   "./styles.css?v=31",
