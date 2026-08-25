@@ -189,7 +189,7 @@
 
   function permanentMultiplier(calibration = 0) {
     const points = Math.max(0, calibration);
-    return 1 + (0.2 * points) / (1 + points / 1000);
+    return 1 + (0.3 * points) / (1 + points / 1000);
   }
 
   function totalOwned(workshops = {}) {
