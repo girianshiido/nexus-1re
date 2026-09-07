@@ -24,6 +24,13 @@ assert.equal(exerciseLabIds.size, [...exerciseLabHtml.matchAll(/\bid="([^"]+)"/g
 const requiredExerciseLabIds = [...exerciseLabApp.matchAll(/\$\("#([^"]+)"\)/g)].map(match => match[1]);
 for (const id of requiredExerciseLabIds) assert.ok(exerciseLabIds.has(id), `élément #${id} manquant dans exerciseurs/index.html`);
 
+const inlinePattern = source => source.match(/const MATH_INLINE_PATTERN = (\/[^\n]+\/g);/)?.[1];
+const decorationPattern = source => source.match(/const MATH_DECORATION_PATTERN = (\/[^\n]+\/gi);/)?.[1];
+assert.equal(inlinePattern(app), inlinePattern(exerciseLabApp), "le jeu et le laboratoire doivent reconnaître exactement les mêmes formules insécables");
+assert.equal(decorationPattern(app), decorationPattern(exerciseLabApp), "le jeu et le laboratoire doivent décorer exactement les mêmes fractions, racines et vecteurs");
+assert.match(app, /Calculer mentalement\\s\*:[^]*\\u2060/, "une expression de calcul mental doit rester insécable");
+assert.match(exerciseLabApp, /Calculer mentalement\\s\*:[^]*\\u2060/, "le laboratoire doit garder les calculs mentaux insécables");
+
 assert.match(html, /question-engine\.js[^]*learning-model\.js[^]*game-model\.js[^]*app\.js/, "les scripts doivent être chargés dans le bon ordre");
 assert.match(html, /viewport-fit=cover/, "la vue mobile doit être configurée");
 assert.match(html, /maximum-scale=1/, "le zoom par pincement doit être désactivé");
@@ -63,7 +70,9 @@ assert.match(app, /math-inline-fraction/, "une formule contenant une fraction do
 assert.match(app, /math-signed-fraction/, "le signe d'une fraction négative doit être placé devant la fraction");
 assert.match(app, /appendVector/, "les vecteurs doivent être surmontés d'une flèche");
 assert.match(styles, /\.math-inline[^]*white-space:\s*nowrap/, "une formule ne doit pas être coupée à l'intérieur sur mobile");
+assert.match(styles, /max-height:\s*840px[^]*\.event-dialog-card[^]*\.question-text/, "les questions doivent disposer d'une présentation compacte sur écran projeté peu haut");
 assert.match(styles, /\.math-radicand[^}]*border-top/, "le trait d'une racine doit recouvrir le radicande");
+assert.match(styles, /\.math-radical-sign::before[^}]*clip-path/, "le signe radical doit être dessiné entièrement en CSS");
 assert.match(styles, /\.math-fraction[^}]*grid-template-rows/, "les quotients doivent être empilés en fractions");
 assert.match(styles, /\.math-fraction[^}]*vertical-align:\s*middle/, "les fractions doivent être centrées verticalement dans les énoncés et les réponses");
 assert.match(styles, /\.math-inline-fraction[^}]*align-items:\s*center/, "les fractions incluses dans une formule doivent être centrées avec les autres symboles");
@@ -135,12 +144,15 @@ assert.match(exerciseLabApp, /selectstart/, "le laboratoire doit bloquer la sél
 assert.match(exerciseLabApp, /format \$\{related\.indexOf\(subskill\) \+ 1\}/, "les formats homonymes doivent être numérotés en français");
 assert.doesNotMatch(exerciseLabApp, /\$\{subskill\.label\} — \$\{subskill\.id\}/, "les identifiants techniques anglais ne doivent pas apparaître dans le sélecteur");
 assert.match(exerciseLabStyles, /\.math-radicand[^}]*border-top/, "le laboratoire doit partager le rendu complet des racines");
+assert.match(exerciseLabStyles, /\.math-radical-sign::before[^}]*clip-path/, "le laboratoire doit partager le radical entièrement dessiné en CSS");
 assert.match(exerciseLabStyles, /\.math-fraction[^}]*grid-template-rows/, "le laboratoire doit partager le rendu des fractions");
 assert.match(exerciseLabStyles, /\.math-fraction[^}]*vertical-align:\s*middle/, "le laboratoire doit centrer verticalement les fractions");
 assert.match(exerciseLabStyles, /\.math-inline-fraction[^}]*align-items:\s*center/, "le laboratoire doit centrer les fractions dans les formules composées");
 assert.match(exerciseLabStyles, /\.math-signed-fraction[^}]*align-items:\s*center/, "le laboratoire doit placer le signe moins devant les fractions négatives");
 assert.match(exerciseLabStyles, /\.math-vector::before[^}]*background:\s*currentColor/, "le laboratoire doit partager la hampe extensible des vecteurs");
 assert.match(exerciseLabStyles, /\.math-vector::after[^}]*border-right/, "le laboratoire doit partager la pointe des vecteurs");
+assert.match(styles, /\.question-visual table[^}]*table-layout:\s*fixed/, "les tableaux de données ne doivent pas déborder sur mobile");
+assert.match(exerciseLabStyles, /\.question-visual table[^}]*table-layout:\s*fixed/, "les tableaux du laboratoire ne doivent pas déborder sur mobile");
 
 const manifest = JSON.parse(manifestText);
 assert.equal(manifest.display, "standalone", "le jeu installé doit s'ouvrir en mode autonome");

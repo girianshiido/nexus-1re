@@ -37,6 +37,13 @@ for (const skillGenerators of Object.values(engine.SKILL_GENERATORS)) {
 const lineEquation = engine.SKILL_GENERATORS.functions[2](() => 0.5);
 assert.match(lineEquation.prompt, /équation réduite/, "la lecture graphique doit demander une équation réduite");
 assert.ok(lineEquation.choices.every(choice => choice.startsWith("y = ")), "une équation réduite de droite doit être écrite sous la forme y = ax + b");
+for (let i = 0; i < 500; i += 1) {
+  const equationReading = engine.SKILL_GENERATORS.functions[3](Math.random);
+  assert.ok(equationReading.choices.every(choice => /^x = −?\d+$/.test(choice)), "une solution d'équation graphique doit être écrite sous la forme x = …");
+  const level = Number(equationReading.visual.match(/data-level="([−-]?\d+)"/)?.[1]);
+  assert.ok(Number.isFinite(level) && Math.abs(level) <= 5, "le niveau horizontal doit rester entièrement visible dans le graphique");
+  assert.match(equationReading.explanation, /La solution est donc x = /, "la correction doit expliciter l'égalité satisfaite par x");
+}
 const variationQuestion = engine.SKILL_GENERATORS.functions[7](Math.random);
 assert.match(variationQuestion.visual, /<svg class="variation-svg"/, "un tableau de variations doit utiliser un dessin vectoriel");
 assert.match(variationQuestion.visual, /marker-end="url\(#variation-arrow-/, "les variations doivent être représentées par de vraies flèches");
@@ -230,6 +237,24 @@ for (const skill of Object.keys(engine.SKILL_GENERATORS)) {
     assert.equal(question.skill, skill, `${skill}: la question doit venir de la notion achetée`);
     assert.equal(question.choices.length, 4, `${skill}: quatre choix attendus`);
     assert.equal(new Set(question.choices.map(engine.canonicalChoice)).size, 4, `${skill}: choix équivalents`);
+  }
+}
+
+for (const [skill, generators] of Object.entries(engine.SKILL_GENERATORS)) {
+  for (const generator of generators) {
+    for (let i = 0; i < 250; i += 1) {
+      const question = generator(Math.random);
+      const fields = [question.prompt, ...question.choices, question.explanation];
+      const displayedText = fields.join(" ");
+      if (question.kind !== "python-bernoulli") {
+        assert.doesNotMatch(displayedText, /\d+\.\d+/, `${question.kind}: les décimaux affichés doivent employer une virgule`);
+      }
+      fields.forEach(field => {
+        assert.doesNotMatch(field, /[+−-]\s*[−-]\d/, `${question.kind}: deux signes opératoires ne doivent pas se suivre`);
+        assert.doesNotMatch(field, /(?:^|[=+−(]\s*)−?1\s+(?:sin|cos)\(/, `${question.kind}: le coefficient 1 doit être omis devant sin ou cos`);
+        assert.doesNotMatch(field, /\b1\(cos\(/, `${question.kind}: le module 1 ne doit pas être écrit devant une forme trigonométrique`);
+      });
+    }
   }
 }
 

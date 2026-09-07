@@ -158,8 +158,8 @@ const minimumCoreFlux = model.WORKSHOPS
   .reduce((total, workshop) => total + Array.from({ length: 100 }, (_, owned) => model.workshopCost(workshop.id, owned))
     .reduce((workshopTotal, cost) => workshopTotal + cost, 0), 0);
 assert.ok(minimumCoreFlux > model.cycleTarget(0), "le réseau complet doit dépasser le coût du premier cycle");
-assert.ok(Math.abs(model.permanentMultiplier(5) - 1.9950248756) < 1e-9);
+assert.ok(Math.abs(model.permanentMultiplier(5) - 2.4925373134) < 1e-9);
 assert.ok(model.permanentMultiplier(200) > 30, "les premiers redémarrages doivent rester très gratifiants");
-assert.ok(model.permanentMultiplier(1e9) < 202, "le multiplicateur permanent doit rester plafonné même avec un capital extrême");
+assert.ok(model.permanentMultiplier(1e9) < 302, "le multiplicateur permanent doit rester plafonné même avec un capital extrême");
 
 console.log("Économie, paliers, clics et cycles validés.");

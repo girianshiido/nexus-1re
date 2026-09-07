@@ -8,8 +8,8 @@
   const SPECIALITY_ORIGIN = "Spécialité mathématiques STI2D";
   const SUBSCRIPT_CHARACTERS = { "₀": "0", "₁": "1", "₂": "2", "₃": "3", "₄": "4", "₅": "5", "₆": "6", "₇": "7", "₈": "8", "₉": "9", "₊": "+", "₋": "−", "ₙ": "n" };
   const SUPERSCRIPT_CHARACTERS = { "⁰": "0", "¹": "1", "²": "2", "³": "3", "⁴": "4", "⁵": "5", "⁶": "6", "⁷": "7", "⁸": "8", "⁹": "9", "⁺": "+", "⁻": "−" };
-  const MATH_INLINE_PATTERN = /f′?\(x\)\s*=\s*[−-]?(?:√(?:\([^()]+\)|[A-Za-z]|\d+(?:[,.]\d+)?)|\d*π|\d+(?:[,.]\d+)?|[a-zω])\s*\/\s*(?:\([^()]+\)(?:²|³)?|\d+(?:[,.]\d+)?|[a-zω])|P\([^()]*\)\s*\/\s*P\([^()]*\)|(?:sin|cos)\([^()]+\)\s*\/\s*[a-zω]|norm\(vec\([^)]+\)\)|vec\([^)]+\)\s*·\s*vec\([^)]+\)|\(\s*vec\([^)]+\)\s*,\s*vec\([^)]+\)\s*\)|vec\([^)]+\)|(?:√?\d+|ρ)\(cos\([^()]+\)\s*\+\s*sin\([^()]+\)i\)|\[(?:√?\d+|ρ)\s*,\s*[^,\]]+\]|(?:cos|sin)\([^()]+\)|P\([^()]*\)(?:\s*=\s*[−-]?\d+(?:[,.]\d+)?)?|u[₀₁₂₃₄₅₆₇₈₉₊₋ₙ]+(?:\s*=\s*(?:u[₀₁₂₃₄₅₆₇₈₉₊₋ₙ]+|[−-]?\d+)(?:\s*[+−-]\s*\d+)?)?|(?:[−-]?\d*)?\(x\s*[+−-]\s*\d+\)(?:\(x\s*[+−-]\s*\d+\))+(?:\s*=\s*0)?|[xy]\s*=\s*[−-]?(?:\d+(?:[,.]\d+)?)?x(?:\s*[+−-]\s*\d+(?:[,.]\d+)?)?|(?:f′?\(x\)|[xy])\s*[=<>≤≥]\s*[−-]?\d+(?:\s+(?:ou|et)\s*[xy]\s*[=<>≤≥]\s*[−-]?\d+)?|\d+\s*×\s*10[⁻⁰¹²³⁴⁵⁶⁷⁸⁹]+/g;
-  const MATH_DECORATION_PATTERN = /norm\(vec\(([^)]+)\)\)|vec\(([^)]+)\)|(?<![A-Za-zÀ-ÿ])([−-]?(?:√(?:\([^()]+\)|[A-Za-z]|\d+(?:[,.]\d+)?)|\d*π|\d+(?:[,.]\d+)?|[a-zω]|(?:sin|cos)\([^()]+\)|\([^()]+\)))\s*\/\s*(\([^()]+\)(?:²|³)?|\d+(?:[,.]\d+)?|[a-zω])(?![A-Za-zÀ-ÿ])|√(\([^()]+\)|[A-Za-z]|\d+(?:[,.]\d+)?)/gi;
+  const MATH_INLINE_PATTERN = /f′?\(x\)\s*=\s*[−-]?(?:√(?:\([^()]+\)|[A-Za-z]|\d+(?:[,.]\d+)?)|\d*π|\d+(?:[,.]\d+)?|[a-zω])\s*\/\s*(?:\([^()]+\)(?:²|³)?|\d+(?:[,.]\d+)?|[a-zω])|P\([^()]*\)\s*\/\s*P\([^()]*\)|(?:sin|cos)\([^()]+\)\s*\/\s*[a-zω]|norm\(vec\([^)]+\)\)|vec\([^)]+\)\s*·\s*vec\([^)]+\)|\(\s*vec\([^)]+\)\s*,\s*vec\([^)]+\)\s*\)|vec\([^)]+\)|(?:√?\d+|ρ)\((?:cos|sin)\([^()]+\)\s*\+\s*(?:sin|cos)\([^()]+\)i\)|\[(?:√?\d+|ρ)\s*,\s*[^,\]]+\]|(?:cos|sin)\([^()]+\)|P\([^()]*\)(?:\s*=\s*[−-]?\d+(?:[,.]\d+)?)?|u[₀₁₂₃₄₅₆₇₈₉₊₋ₙ]+(?:\s*=\s*(?:u[₀₁₂₃₄₅₆₇₈₉₊₋ₙ]+|[−-]?\d+)(?:\s*[+−-]\s*\d+)?)?|(?:[−-]?\d*)?\(x\s*[+−-]\s*\d+\)(?:\(x\s*[+−-]\s*\d+\))+(?:\s*=\s*0)?|[xy]\s*=\s*[−-]?(?:\d+(?:[,.]\d+)?)?x(?:\s*[+−-]\s*\d+(?:[,.]\d+)?)?|(?:f′?\(x\)|[xy])\s*[=<>≤≥]\s*[−-]?\d+(?:\s+(?:ou|et)\s*[xy]\s*[=<>≤≥]\s*[−-]?\d+)?|\d+\s*×\s*10[⁻⁰¹²³⁴⁵⁶⁷⁸⁹]+/g;
+  const MATH_DECORATION_PATTERN = /norm\(vec\(([^)]+)\)\)|vec\(([^)]+)\)|(?<![A-Za-zÀ-ÿ])([−-]?(?:√(?:\([^()]+\)|[A-Za-z]|\d+(?:[,.]\d+)?)|\d*π|\d+(?:[,.]\d+)?|[a-zω](?:′)?|(?:sin|cos)\([^()]+\)|\([^()]+\)))\s*\/\s*(\([^()]+\)(?:²|³)?|\d+(?:[,.]\d+)?|[a-zωπ](?:²|³)?)(?![A-Za-zÀ-ÿ])|√(\([^()]+\)|[A-Za-z]|\d+(?:[,.]\d+)?)/gi;
 
   const dom = {
     catalogueTotal: $("#catalog-total"), programmeSwitch: $("#programme-switch"),
@@ -124,7 +124,10 @@
 
   function renderMathText(target, text) {
     const fragment = document.createDocumentFragment();
-    const source = String(text).replace(/\bh\s*=\s*[−-]?\d+(?:[,.]\d+)?/g, formula => formula.replace(/\s/g, "\u00a0"));
+    const source = String(text)
+      .replace(/\bh\s*=\s*[−-]?\d+(?:[,.]\d+)?/g, formula => formula.replace(/\s/g, "\u00a0"))
+      .replace(/(Calculer mentalement\s*:\s*)([^.]+)(\.)/gi, (whole, introduction, expression, stop) =>
+        `${introduction}${expression.replace(/\s/g, "\u00a0").replace(/([+−×÷])/g, "\u2060$1\u2060")}${stop}`);
     let cursor = 0;
     for (const match of source.matchAll(MATH_INLINE_PATTERN)) {
       appendDecoratedMath(fragment, source.slice(cursor, match.index));
@@ -259,7 +262,7 @@
   function renderQuestionCanvases() {
     dom.questionVisual.querySelectorAll("canvas[data-plot='line']").forEach(canvas => {
       const width = Math.max(260, Math.min(780, Math.round(canvas.getBoundingClientRect().width || 620)));
-      const height = Math.round(Math.max(210, width * 0.48));
+      const height = Math.round(Math.max(180, Math.min(width * 0.48, window.innerHeight * 0.28)));
       const ratio = Math.min(2, window.devicePixelRatio || 1);
       canvas.width = width * ratio;
       canvas.height = height * ratio;
@@ -280,14 +283,14 @@
       for (let x = xMin; x <= xMax; x += 1) {
         context.strokeStyle = x === 0 ? "rgba(220, 246, 250, 0.62)" : "rgba(125, 196, 210, 0.13)";
         context.beginPath(); context.moveTo(px(x), margin); context.lineTo(px(x), height - margin); context.stroke();
-        if (x !== 0) { context.fillStyle = "rgba(190, 218, 225, 0.7)"; context.fillText(String(x), px(x), py(0) + 5); }
+        if (x !== 0) { context.fillStyle = "rgba(190, 218, 225, 0.7)"; context.fillText(x < 0 ? `−${Math.abs(x)}` : String(x), px(x), py(0) + 5); }
       }
       context.textAlign = "right";
       context.textBaseline = "middle";
       for (let y = yMin; y <= yMax; y += 1) {
         context.strokeStyle = y === 0 ? "rgba(220, 246, 250, 0.62)" : "rgba(125, 196, 210, 0.13)";
         context.beginPath(); context.moveTo(margin, py(y)); context.lineTo(width - margin, py(y)); context.stroke();
-        if (y !== 0 && y % 2 === 0) { context.fillStyle = "rgba(190, 218, 225, 0.7)"; context.fillText(String(y), px(0) - 5, py(y)); }
+        if (y !== 0 && y % 2 === 0) { context.fillStyle = "rgba(190, 218, 225, 0.7)"; context.fillText(y < 0 ? `−${Math.abs(y)}` : String(y), px(0) - 5, py(y)); }
       }
       if (canvas.dataset.level !== undefined) {
         const level = Number(canvas.dataset.level);

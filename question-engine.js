@@ -53,6 +53,18 @@
     return `${value > 0 ? "+" : "−"}${formatNumber(Math.abs(value), digits)} %`;
   }
 
+  function displayChoice(value) {
+    return typeof value === "number" ? formatNumber(value, 4) : String(value);
+  }
+
+  function signedNumber(value) {
+    return value < 0 ? `−${formatNumber(Math.abs(value), 4)}` : formatNumber(value, 4);
+  }
+
+  function differenceExpression(left, right) {
+    return `${signedNumber(left)} ${right < 0 ? "+" : "−"} ${formatNumber(Math.abs(right), 4)}`;
+  }
+
   function gcd(a, b) {
     let x = Math.abs(a);
     let y = Math.abs(b);
@@ -66,6 +78,11 @@
     const n = sign * numerator / divisor;
     const d = Math.abs(denominator) / divisor;
     return d === 1 ? String(n) : `${n}/${d}`;
+  }
+
+  function squareRoot(value) {
+    const root = Math.sqrt(value);
+    return Number.isInteger(root) ? String(root) : `√${value}`;
   }
 
   function superscript(value) {
@@ -120,7 +137,8 @@
   }
 
   function makeChoices(correct, distractors, rng = Math.random) {
-    const values = [String(correct), ...distractors.map(String)];
+    const displayedCorrect = displayChoice(correct);
+    const values = [displayedCorrect, ...distractors.map(displayChoice)];
     const unique = [];
     const seen = new Set();
     values.forEach(value => {
@@ -132,12 +150,12 @@
     });
     let bump = 1;
     while (unique.length < 4) {
-      const source = String(correct);
+      const source = displayedCorrect;
       const numeric = Number(source.replace(",", "."));
       const embedded = source.match(/[+-]?\d+(?:[.,]\d+)?/);
       let candidate;
       if (Number.isFinite(numeric)) {
-        candidate = String(numeric + bump);
+        candidate = displayChoice(numeric + bump);
       } else if (embedded) {
         const changedValue = Number(embedded[0].replace(",", ".")) + bump;
         let changed = String(changedValue).replace(".", embedded[0].includes(",") ? "," : ".");
@@ -153,7 +171,7 @@
       bump += 1;
     }
     const choices = shuffle(unique.slice(0, 4), rng);
-    return { choices, answer: choices.indexOf(String(correct)) };
+    return { choices, answer: choices.indexOf(displayedCorrect) };
   }
 
   function fingerprint(question) {
@@ -878,7 +896,7 @@
       skill: "functions",
       prompt: `Une droite passe par A(${x1} ; ${y1}) et B(${x2} ; ${y2}). Quel est son coefficient directeur ?`,
       choices, answer,
-      explanation: `m = (${y2} − ${y1}) ÷ (${x2} − ${x1}) = ${formatNumber(slope)}.`
+      explanation: `m = (${differenceExpression(y2, y1)}) ÷ (${differenceExpression(x2, x1)}) = ${formatNumber(slope)}.`
     };
   }
 
@@ -918,18 +936,30 @@
   }
 
   function graphEquationReading(rng) {
-    const slope = pick([-2, -1, 1, 2], rng);
-    const intercept = randInt(-2, 2, rng);
-    const solution = randInt(-3, 3, rng);
-    const level = slope * solution + intercept;
-    const { choices, answer } = makeChoices(solution, [-solution, solution + 1, level], rng);
+    let slope;
+    let intercept;
+    let solution;
+    let level;
+    do {
+      slope = pick([-2, -1, 1, 2], rng);
+      intercept = randInt(-2, 2, rng);
+      solution = randInt(-3, 3, rng);
+      level = slope * solution + intercept;
+    } while (Math.abs(level) > 5);
+    const good = `x = ${signedNumber(solution)}`;
+    const { choices, answer } = makeChoices(good, [
+      `x = ${signedNumber(-solution)}`,
+      `x = ${signedNumber(solution + 1)}`,
+      `x = ${signedNumber(solution - 1)}`,
+      `x = ${signedNumber(level)}`
+    ], rng);
     return {
       kind: "graph-equation-reading",
       skill: "functions",
-      prompt: `À l'aide du graphique, résoudre f(x) = ${level}.`,
+      prompt: `À l'aide du graphique, résoudre f(x) = ${signedNumber(level)}.`,
       choices, answer,
       visual: `<canvas class="question-plot" data-plot="line" data-slope="${slope}" data-intercept="${intercept}" data-level="${level}" role="img" aria-label="Graphique d'une fonction affine et niveau horizontal ${level}"></canvas>`,
-      explanation: `La droite horizontale d'ordonnée ${level} rencontre la courbe au point d'abscisse ${solution}.`
+      explanation: `La droite horizontale d'ordonnée ${signedNumber(level)} rencontre la courbe au point d'abscisse ${signedNumber(solution)}. La solution est donc ${good}.`
     };
   }
 
@@ -973,7 +1003,7 @@
       skill: "functions",
       prompt: `Quel est le sommet de la parabole représentant f(x) = ${expression} ?`,
       choices, answer,
-      explanation: `La forme ${coefficient}(x − ${abscissa})² + ${ordinate} donne directement le sommet ${good}.`
+      explanation: `La forme canonique ${expression} donne directement le sommet ${good}.`
     };
   }
 
@@ -1064,13 +1094,13 @@
       <text class="variation-axis" x="24" y="31">x</text>
       <text class="variation-axis" x="24" y="91">f(x)</text>
       <text class="variation-x" x="92" y="31">−∞</text>
-      <text class="variation-x" x="218" y="31">${vertex}</text>
+      <text class="variation-x" x="218" y="31">${signedNumber(vertex)}</text>
       <text class="variation-x" x="357" y="31">+∞</text>
       <line class="variation-arrow" x1="100" y1="${layout.arrows.leftY}" x2="207" y2="${layout.arrows.centerY}" marker-end="url(#${arrowId})" />
       <line class="variation-arrow" x1="235" y1="${layout.arrows.centerY}" x2="350" y2="${layout.arrows.rightY}" marker-end="url(#${arrowId})" />
-      <text class="variation-value" x="${layout.labels.leftX}" y="${layout.labels.leftY}">${values[0]}</text>
-      <text class="variation-value" x="221" y="${layout.labels.centerY}">${values[1]}</text>
-      <text class="variation-value" x="362" y="${layout.labels.rightY}">${values[2]}</text>
+      <text class="variation-value" x="${layout.labels.leftX}" y="${layout.labels.leftY}">${signedNumber(values[0])}</text>
+      <text class="variation-value" x="221" y="${layout.labels.centerY}">${signedNumber(values[1])}</text>
+      <text class="variation-value" x="362" y="${layout.labels.rightY}">${signedNumber(values[2])}</text>
     </svg>`;
     return {
       kind: "variation-reading",
@@ -1268,7 +1298,7 @@
       skill: "derivatives",
       prompt: `Pour f(x) = ${polynomialExpression(a, b, c)}, déterminer l'équation de la tangente au point d'abscisse ${x0}.`,
       choices, answer,
-      explanation: `f′(${x0}) = ${slope} et f(${x0}) = ${y0}. La tangente vérifie y = ${slope}(x − ${x0}) + ${y0}, soit ${good}.`
+      explanation: `f′(${signedNumber(x0)}) = ${signedNumber(slope)} et f(${signedNumber(x0)}) = ${signedNumber(y0)}. Avec y = f′(a)(x − a) + f(a), on obtient ${good}.`
     };
   }
 
@@ -1469,8 +1499,8 @@
       skill: "probability",
       prompt: "Calculer l'espérance de la variable aléatoire X donnée par cette loi.",
       choices, answer,
-      visual: `<table aria-label="Loi de probabilité de X"><tr><th>x</th>${values.map(value => `<td>${value}</td>`).join("")}</tr><tr><th>P(X = x)</th><td>${formatNumber(p0)}</td><td>${formatNumber(p1)}</td><td>${formatNumber(p2)}</td></tr></table>`,
-      explanation: `E(X) = ${values[0]} × ${formatNumber(p0)} + ${values[1]} × ${formatNumber(p1)} + ${values[2]} × ${formatNumber(p2)} = ${formatNumber(expectation, 2)}.`
+      visual: `<table aria-label="Loi de probabilité de X"><tr><th>x</th>${values.map(value => `<td>${signedNumber(value)}</td>`).join("")}</tr><tr><th>P(X = x)</th><td>${formatNumber(p0)}</td><td>${formatNumber(p1)}</td><td>${formatNumber(p2)}</td></tr></table>`,
+      explanation: `E(X) = (${signedNumber(values[0])}) × ${formatNumber(p0)} + (${signedNumber(values[1])}) × ${formatNumber(p1)} + (${signedNumber(values[2])}) × ${formatNumber(p2)} = ${formatNumber(expectation, 2)}.`
     };
   }
 
@@ -1497,7 +1527,7 @@
       skill: "probability",
       prompt: `D'après cette loi, calculer P(${event}).`,
       choices, answer,
-      visual: `<table aria-label="Loi de probabilité de X"><tr><th>x</th>${values.map(value => `<td>${value}</td>`).join("")}</tr><tr><th>P(X = x)</th>${probabilities.map(value => `<td>${formatNumber(value)}</td>`).join("")}</tr></table>`,
+      visual: `<table aria-label="Loi de probabilité de X"><tr><th>x</th>${values.map(value => `<td>${signedNumber(value)}</td>`).join("")}</tr><tr><th>P(X = x)</th>${probabilities.map(value => `<td>${formatNumber(value)}</td>`).join("")}</tr></table>`,
       explanation: selectedIndices.length === 1
         ? `L'événement ${event} correspond à une seule valeur : sa probabilité est ${formatNumber(good, 2)}.`
         : `L'événement ${event} regroupe ${selectedIndices.map(index => `X = ${values[index]}`).join(" et ")} : ${selectedIndices.map(index => formatNumber(probabilities[index])).join(" + ")} = ${formatNumber(good, 2)}.`
@@ -1985,7 +2015,7 @@
     const divisor = pick([2, 3, 4, 5, 6], rng);
     const useSin = rng() < 0.5;
     const good = divisor === 2 ? "π" : divisor % 2 === 0 ? `π/${divisor / 2}` : `2π/${divisor}`;
-    const { choices, answer } = makeChoices(good, [`${divisor}π`, `π/${divisor}`, `2π`, `${divisor}/2π`], rng);
+    const { choices, answer } = makeChoices(good, [`${divisor}π`, `π/${divisor}`, `2π`, `${divisor}π/2`], rng);
     return {
       kind: "sinusoid-period",
       skill: "sinusoids",
@@ -2001,7 +2031,7 @@
     const period = 1 / frequency;
     const good = askFrequency ? `${frequency} Hz` : `${formatNumber(period, 3)} s`;
     const { choices, answer } = makeChoices(good, askFrequency
-      ? [`${frequency * 2} Hz`, `${formatNumber(period, 3)} Hz`, `${frequency / 2} Hz`]
+      ? [`${frequency * 2} Hz`, `${formatNumber(period, 3)} Hz`, `${formatNumber(frequency / 2)} Hz`]
       : [`${formatNumber(period * 2, 3)} s`, `${frequency} s`, `${formatNumber(1 / (frequency * 2), 3)} s`], rng);
     return {
       kind: "frequency-period",
@@ -2057,7 +2087,7 @@
       skill: "vectors",
       prompt: `Dans un repère orthonormé, vec(u) = (${ux} ; ${uy}) et vec(v) = (${vx} ; ${vy}). Calculer vec(u) · vec(v).`,
       choices, answer,
-      explanation: `vec(u) · vec(v) = ${ux} × (${vx}) + ${uy} × (${vy}) = ${good}.`
+      explanation: `vec(u) · vec(v) = (${signedNumber(ux)}) × (${signedNumber(vx)}) + (${signedNumber(uy)}) × (${signedNumber(vy)}) = ${signedNumber(good)}.`
     };
   }
 
@@ -2073,7 +2103,7 @@
       skill: "vectors",
       prompt: `Calculer norm(vec(u)) pour vec(u) = (${x} ; ${y}).`,
       choices, answer,
-      explanation: `norm(vec(u)) = √(${x}² + ${y}²) = √${triple[2] ** 2} = ${good}.`
+      explanation: `norm(vec(u))² = (${signedNumber(x)})² + (${signedNumber(y)})² = ${triple[2] ** 2}. Donc norm(vec(u)) = √${triple[2] ** 2} = ${good}.`
     };
   }
 
@@ -2122,7 +2152,7 @@
     ], rng);
     const [a, b, angle, cosine] = sides;
     const squared = a * a + b * b - 2 * a * b * cosine;
-    const good = `√${squared}`;
+    const good = squareRoot(squared);
     const { choices, answer } = makeChoices(good, [`√${a * a + b * b}`, `√${a * a + b * b + 2 * a * b * cosine}`, String(a + b)], rng);
     return {
       kind: "al-kashi",
@@ -2175,7 +2205,7 @@
       skill: "complexAlgebra",
       prompt: `Calculer le module de z = ${complexExpression(a, b)}.`,
       choices, answer,
-      explanation: `|z| = √(${a}² + ${b}²) = ${good}.`
+      explanation: `|z|² = (${signedNumber(a)})² + (${signedNumber(b)})² = ${triple[2] ** 2}. Donc |z| = √${triple[2] ** 2} = ${good}.`
     };
   }
 
@@ -2254,7 +2284,7 @@
       skill: "complexAlgebra",
       prompt: `A a pour affixe ${complexExpression(ax, ay)} et B a pour affixe ${complexExpression(bx, by)}. Quelle est l'affixe du vecteur vec(AB) ?`,
       choices, answer,
-      explanation: `L'affixe de vec(AB) est zB − zA = (${bx} − ${ax}) + (${by} − ${ay})i = ${good}.`
+      explanation: `L'affixe de vec(AB) est zB − zA = (${differenceExpression(bx, ax)}) + (${differenceExpression(by, ay)})i = ${good}.`
     };
   }
 
@@ -2288,9 +2318,10 @@
     const selected = pick(cases, rng);
     const good = `${selected.rho}(cos(${selected.theta}) + sin(${selected.theta})i)`;
     const wrongAngle = selected.theta === "π/4" ? "−π/4" : "π/4";
+    const wrongModulus = selected.rho === "2" ? "3" : "2";
     const { choices, answer } = makeChoices(good, [
       `${selected.rho}(cos(${wrongAngle}) + sin(${wrongAngle})i)`,
-      `1(cos(${selected.theta}) + sin(${selected.theta})i)`,
+      `${wrongModulus}(cos(${selected.theta}) + sin(${selected.theta})i)`,
       `${selected.rho}(sin(${selected.theta}) + cos(${selected.theta})i)`
     ], rng);
     return {
@@ -2441,7 +2472,7 @@
     const good = `${a / 3}x³ + ${b / 2}x² ${c >= 0 ? "+" : "−"} ${Math.abs(c)}x`;
     const { choices, answer } = makeChoices(good, [
       `${3 * a}x³ + ${2 * b}x² ${c >= 0 ? "+" : "−"} ${Math.abs(c)}x`,
-      `${a / 2}x² + ${b}x ${c >= 0 ? "+" : "−"} ${Math.abs(c)}`,
+      `${formatNumber(a / 2)}x² + ${b}x ${c >= 0 ? "+" : "−"} ${Math.abs(c)}`,
       `${a / 3}x³ + ${b / 2}x²`
     ], rng);
     return {
@@ -2458,11 +2489,16 @@
     const coefficient = randInt(1, 5, rng) * omega;
     const useCos = rng() < 0.5;
     const simplified = coefficient / omega;
-    const good = useCos ? `${simplified} sin(${omega}x)` : `−${simplified} cos(${omega}x)`;
+    const primitiveTerm = (coefficientValue, functionName) => {
+      if (coefficientValue === 1) return `${functionName}(${omega}x)`;
+      if (coefficientValue === -1) return `−${functionName}(${omega}x)`;
+      return `${signedNumber(coefficientValue)} ${functionName}(${omega}x)`;
+    };
+    const good = primitiveTerm(useCos ? simplified : -simplified, useCos ? "sin" : "cos");
     const { choices, answer } = makeChoices(good, [
-      useCos ? `${coefficient} sin(${omega}x)` : `−${coefficient} cos(${omega}x)`,
-      useCos ? `−${simplified} sin(${omega}x)` : `${simplified} cos(${omega}x)`,
-      useCos ? `${simplified} cos(${omega}x)` : `${simplified} sin(${omega}x)`
+      primitiveTerm(useCos ? coefficient : -coefficient, useCos ? "sin" : "cos"),
+      primitiveTerm(useCos ? -simplified : simplified, useCos ? "sin" : "cos"),
+      primitiveTerm(simplified, useCos ? "cos" : "sin")
     ], rng);
     return {
       kind: "sinusoid-primitive",
