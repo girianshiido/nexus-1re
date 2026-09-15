@@ -400,7 +400,7 @@ dialog::backdrop { background: rgba(1, 9, 14, 0.82); backdrop-filter: blur(8px);
 .skill-chip { color: #dfb1ff; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; }
 .timer-track { height: 6px; margin: 9px 0 21px; }
 .timer-track span { width: 100%; background: linear-gradient(90deg, var(--cyan), var(--blue)); }
-.question-visual { margin-bottom: 18px; }
+.question-visual { margin-bottom: 9px; }
 .question-visual table { width: 100%; table-layout: fixed; border-collapse: collapse; text-align: center; font-size: 14px; }
 .question-visual th, .question-visual td { padding: 9px; border: 1px solid rgba(136, 205, 222, 0.25); }
 .question-visual th { color: #d59bff; background: rgba(102, 228, 231, 0.055); }
@@ -419,7 +419,7 @@ dialog::backdrop { background: rgba(1, 9, 14, 0.82); backdrop-filter: blur(8px);
 .mini-bars span { position: relative; align-self: end; display: block; height: var(--bar-height); min-height: 20px; border-radius: 7px 7px 2px 2px; background: linear-gradient(180deg, var(--violet), var(--blue)); }
 .mini-bars b { position: absolute; top: -18px; left: 50%; color: var(--text); font-size: 10px; transform: translateX(-50%); }
 .mini-bars small { padding-top: 6px; color: var(--muted); font-size: 10px; text-align: center; }
-.question-text { min-height: 60px; margin: 0 0 22px; font-size: clamp(19px, 2.5vw, 24px); font-weight: 700; line-height: 1.32; text-align: center; overflow-wrap: normal; word-break: normal; }
+.question-text { min-height: 30px; margin: 0 0 11px; font-size: clamp(9.5px, 1.25vw, 12px); font-weight: 700; line-height: 1.32; text-align: center; overflow-wrap: normal; word-break: normal; }
 .math-inline { display: inline-block; white-space: nowrap; }
 .math-inline-fraction { display: inline-flex; align-items: center; vertical-align: baseline; }
 .math-sub, .math-sup { font-family: inherit; font-size: 0.65em; line-height: 0; }
@@ -465,9 +465,9 @@ dialog::backdrop { background: rgba(1, 9, 14, 0.82); backdrop-filter: blur(8px);
   .event-dialog-head > strong { padding: 6px 9px; }
   .question-meta { font-size: 10px; }
   .timer-track { margin: 6px 0 10px; }
-  .question-visual { margin-bottom: 10px; }
+  .question-visual { margin-bottom: 5px; }
   .variation-svg { max-height: 160px; }
-  .question-text { min-height: 0; margin-bottom: 13px; font-size: clamp(18px, 2vw, 21px); line-height: 1.24; }
+  .question-text { min-height: 0; margin-bottom: 6.5px; font-size: clamp(9px, 1vw, 10.5px); line-height: 1.24; }
   .answers { gap: 8px; }
   .answer-button { min-height: 46px; padding: 8px 10px; font-size: 15px; }
   .feedback { margin: 10px 0; padding: 10px; }
@@ -543,7 +543,7 @@ dialog::backdrop { background: rgba(1, 9, 14, 0.82); backdrop-filter: blur(8px);
   .answers { grid-template-columns: 1fr; }
   .programme-grid { grid-template-columns: 1fr; }
   .programme-dialog-card { padding: 22px 16px; }
-  .question-text { font-size: 20px; }
+  .question-text { font-size: 10px; }
   .question-visual th, .question-visual td { padding: 7px 3px; overflow-wrap: anywhere; font-size: 11px; }
   .roadmap-items { grid-template-columns: 1fr; }
   footer { flex-direction: column; align-items: flex-start; }

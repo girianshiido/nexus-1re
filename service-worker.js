@@ -1,7 +1,7 @@
-const CACHE_NAME = "nexus-laboratoire-v60";
+const CACHE_NAME = "nexus-laboratoire-v61";
 const APP_SHELL = [
   "./index.html",
-  "./styles.css?v=32",
+  "./styles.css?v=33",
   "./question-engine.js?v=31",
   "./learning-model.js?v=1",
   "./game-model.js?v=11",
