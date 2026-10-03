@@ -44,6 +44,16 @@ Le jeu peut être installé sur l'écran d'accueil : via le menu du navigateur s
 - Chaque question possède une référence et peut être signalée localement après la réponse.
 - La progression est enregistrée localement dans le navigateur.
 
+## Sauvegardes exportées
+
+Les nouveaux exports (format 2) portent une empreinte HMAC-SHA-256 couvrant tout l'état du jeu et les métadonnées du fichier. L'import vérifie cette empreinte avant de proposer le remplacement de la partie ; une modification des valeurs, un fichier endommagé ou une empreinte manquante entraîne un refus. Les espaces et l'ordre des clés JSON peuvent changer sans invalider le fichier.
+
+Les anciens exports non signés ne sont plus importables : réexporter la partie depuis le navigateur qui la possède. Les sauvegardes locales existantes sont conservées. Export et import protégé nécessitent HTTPS ou localhost.
+
+Cette protection freine l'édition manuelle des fichiers. Le jeu et sa clé s'exécutant côté navigateur, elle ne peut pas empêcher un utilisateur de modifier le code ou le stockage local. Une garantie contre la triche nécessiterait une progression validée par un serveur. Les outils de diagnostic permettant d'ajouter du flux sont désormais réservés aux adresses locales.
+
+L'audit `tests/browser-android-saves.mjs` vérifie le transfert entre navigateurs, l'altération de chaque champ et les achats sur écran tactile avec 35 minutes de jeu simulées. Il utilise Playwright et les variables `NEXUS_GAME_AUDIT_URL`, `NEXUS_PLAYWRIGHT_PATH` et `NEXUS_CHROME_PATH`.
+
 ## Vérifications
 
 ```sh

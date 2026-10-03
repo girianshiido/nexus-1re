@@ -12,7 +12,9 @@
   const OFFLINE_LIMIT = 4 * 60 * 60;
   const REPORT_LIMIT = 50;
   const SAVE_EXPORT_FORMAT = "nexus-1re-save";
-  const SAVE_EXPORT_VERSION = 1;
+  const SAVE_EXPORT_VERSION = 2;
+  // A client-side key deters manual JSON edits; it cannot stop modified game code.
+  const SAVE_INTEGRITY_KEY = "26e0315a62a29e1f05d37c956ab0171b24677c65b839bd1eca429e9c2f008d37";
   const MAX_IMPORT_SIZE = 2 * 1024 * 1024;
   const EVENT_WINDOW_MS = 30000;
   const TIME_API_URL = "https://gettimeapi.dev/v1/time?timezone=UTC";
@@ -396,6 +398,7 @@
   let audioContext = null;
   let lastFrame = performance.now();
   let lastRender = 0;
+  let lastShopRender = 0;
   let lastSave = 0;
   let lastLearningRender = 0;
   let lastAutomationAt = 0;
@@ -505,22 +508,50 @@
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch { /* sauvegarde indisponible */ }
   }
 
-  function exportSave() {
-    const exportedAt = new Date().toISOString();
-    const payload = {
-      format: SAVE_EXPORT_FORMAT,
-      exportVersion: SAVE_EXPORT_VERSION,
-      exportedAt,
-      state
-    };
-    const blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `nexus-1re-partie-${exportedAt.slice(0, 10)}.json`;
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 0);
-    showToast("Partie exportée. Conserve ce fichier pour la restaurer sur un autre ordinateur.");
+  function canonicalSave(value) {
+    if (Array.isArray(value)) return `[${value.map(canonicalSave).join(",")}]`;
+    if (value && typeof value === "object") {
+      return `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${canonicalSave(value[key])}`).join(",")}}`;
+    }
+    return JSON.stringify(value);
+  }
+
+  async function saveIntegrityKey() {
+    if (!window.crypto?.subtle) throw new Error("integrity-unavailable");
+    return window.crypto.subtle.importKey(
+      "raw", new TextEncoder().encode(SAVE_INTEGRITY_KEY),
+      { name: "HMAC", hash: "SHA-256" }, false, ["sign", "verify"]
+    );
+  }
+
+  async function exportSave() {
+    dom.exportSaveButton.disabled = true;
+    try {
+      const exportedAt = new Date().toISOString();
+      const payload = {
+        format: SAVE_EXPORT_FORMAT,
+        exportVersion: SAVE_EXPORT_VERSION,
+        exportedAt,
+        // Freeze the entire snapshot before signing while gameplay continues.
+        state: JSON.parse(JSON.stringify(state))
+      };
+      const signature = await window.crypto.subtle.sign(
+        "HMAC", await saveIntegrityKey(), new TextEncoder().encode(canonicalSave(payload))
+      );
+      payload.checksum = Array.from(new Uint8Array(signature), byte => byte.toString(16).padStart(2, "0")).join("");
+      const blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `nexus-1re-partie-${exportedAt.slice(0, 10)}.json`;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+      showToast("Partie exportée. Conserve ce fichier pour la restaurer sur un autre ordinateur.");
+    } catch {
+      showToast("Export impossible : ouvre NEXUS en HTTPS ou sur localhost pour protéger la sauvegarde.");
+    } finally {
+      dom.exportSaveButton.disabled = false;
+    }
   }
 
   function applyImportedState(imported) {
@@ -552,6 +583,9 @@
     }
     try {
       const payload = JSON.parse(await file.text());
+      if (payload?.format === SAVE_EXPORT_FORMAT && payload.exportVersion === 1) {
+        throw new Error("unsigned-save");
+      }
       if (
         !payload
         || payload.format !== SAVE_EXPORT_FORMAT
@@ -559,13 +593,26 @@
         || !payload.state
         || payload.state.version !== 2
       ) throw new Error("format invalide");
+      if (typeof payload.checksum !== "string" || !/^[a-f0-9]{64}$/.test(payload.checksum)) {
+        throw new Error("invalid-checksum");
+      }
+      const { checksum, ...signedPayload } = payload;
+      const signature = Uint8Array.from(checksum.match(/../g), byte => parseInt(byte, 16));
+      if (!await window.crypto.subtle.verify(
+        "HMAC", await saveIntegrityKey(), signature,
+        new TextEncoder().encode(canonicalSave(signedPayload))
+      )) throw new Error("invalid-checksum");
       const imported = normalizeState(payload.state);
       if (!imported) throw new Error("sauvegarde invalide");
       pendingImportedState = imported;
       showConfirm("import-save");
-    } catch {
+    } catch (error) {
       pendingImportedState = null;
-      showToast("Import impossible : choisis un fichier de sauvegarde NEXUS valide.");
+      showToast(error.message === "unsigned-save"
+        ? "Ancien export sans protection : réexporte la partie depuis le navigateur où elle est enregistrée."
+        : error.message === "integrity-unavailable"
+          ? "Vérification indisponible : ouvre NEXUS en HTTPS ou sur localhost."
+          : "Import refusé : sauvegarde modifiée, endommagée ou non protégée.");
     }
   }
 
@@ -624,6 +671,8 @@
       view.hidden = !active;
       view.classList.toggle("active", active);
     });
+    if (tab === "workshops") renderWorkshops();
+    if (tab === "upgrades") renderWorkshopUpgrades();
     if (moveToTop) {
       const top = Math.max(0, document.querySelector(".cycle-strip").getBoundingClientRect().bottom + window.scrollY - 8);
       window.scrollTo({ top, behavior: "smooth" });
@@ -1601,7 +1650,7 @@
           <h3>${workshop.name}</h3>
           <p>${workshop.description}</p>
           <div class="workshop-meta">
-            <span id="rate-${workshop.id}">0/s</span>
+            <span id="rate-${workshop.id}"><b>0/s</b></span>
             <span id="mastery-${workshop.id}">Maîtrise 0</span>
             <span id="synergy-${workshop.id}" class="workshop-synergy"></span>
             <span id="milestone-${workshop.id}">Palier à 10</span>
@@ -1649,6 +1698,11 @@
     });
   }
 
+  function setText(element, text) {
+    const value = String(text);
+    if (element.textContent !== value) element.textContent = value;
+  }
+
   function renderWorkshops() {
     const specialityIsUnlocked = specialityUnlocked();
     const lastAccessibleWorkshopIndex = specialityIsUnlocked
@@ -1661,7 +1715,9 @@
       const count = state.workshops[workshop.id] || 0;
       const card = dom.workshopList.querySelector(`[data-workshop="${workshop.id}"]`);
       if (!card) return;
-      card.hidden = (workshop.speciality && !specialityIsUnlocked) || index > state.workshopReveal;
+      const hidden = (workshop.speciality && !specialityIsUnlocked) || index > state.workshopReveal;
+      if (card.hidden !== hidden) card.hidden = hidden;
+      if (card.hidden) return;
       const quote = workshopQuote(workshop);
       const button = card.querySelector(".workshop-buy");
       const affordable = quote.quantity > 0 && quote.cost <= state.flux;
@@ -1679,9 +1735,9 @@
       const received = Model.workshopSynergyMultiplier(workshop.id, state.workshops, state.mastery);
       card.classList.toggle("owned", count > 0);
       card.classList.toggle("unaffordable", !affordable && !(upgradeStatus.unlocked && state.flux >= upgradeStatus.cost));
-      card.querySelector(`#count-bg-${workshop.id}`).textContent = count;
-      card.querySelector(`#rate-${workshop.id}`).innerHTML = `<b>${format(rate)}/s</b>`;
-      card.querySelector(`#mastery-${workshop.id}`).textContent = skillStageSummary(workshop.id);
+      setText(card.querySelector(`#count-bg-${workshop.id}`), count);
+      setText(card.querySelector(`#rate-${workshop.id} b`), `${format(rate)}/s`);
+      setText(card.querySelector(`#mastery-${workshop.id}`), skillStageSummary(workshop.id));
       const synergyParts = [];
       const hasAccessibleWorkshopAfter = index < lastAccessibleWorkshopIndex;
       if (support > 0 && hasAccessibleWorkshopAfter) {
@@ -1693,27 +1749,27 @@
       }
       if (received > 1.001) synergyParts.push(`reçoit ×${format(received)}`);
       const synergy = card.querySelector(`#synergy-${workshop.id}`);
-      synergy.textContent = synergyParts.join(" · ");
+      setText(synergy, synergyParts.join(" · "));
       synergy.hidden = !synergyParts.length;
-      card.querySelector(`#milestone-${workshop.id}`).textContent = upgradeStatus.completed
+      setText(card.querySelector(`#milestone-${workshop.id}`), upgradeStatus.completed
         ? "Toutes les améliorations achetées"
         : upgradeStatus.unlocked
           ? `Palier ${upgradeStatus.milestone} atteint · amélioration disponible`
-          : `Prochain palier : ${upgradeStatus.milestone} (${count}/${upgradeStatus.milestone})`;
-      button.disabled = !affordable;
+          : `Prochain palier : ${upgradeStatus.milestone} (${count}/${upgradeStatus.milestone})`);
+      if (button.disabled !== !affordable) button.disabled = !affordable;
       const noMoreMilestone = state.bulk === "milestone" && Model.nextMilestone(count) === null;
-      button.querySelector("span").textContent = noMoreMilestone
+      setText(button.querySelector("span"), noMoreMilestone
         ? "Tous les paliers"
         : state.bulk === "max" && quote.quantity
           ? `MAX · ×${quote.quantity}`
           : quote.quantity
             ? `Acheter ×${quote.quantity}`
-            : "Acheter";
-      button.querySelector("small").textContent = quote.quantity
+            : "Acheter");
+      setText(button.querySelector("small"), quote.quantity
         ? `${format(quote.cost)} flux`
         : noMoreMilestone
           ? "200 atteint"
-          : `${format(Model.workshopCost(workshop.id, count))} flux`;
+          : `${format(Model.workshopCost(workshop.id, count))} flux`);
     });
     const teaser = dom.workshopList.querySelector("#next-workshop-teaser");
     const nextCandidate = Model.WORKSHOPS[state.workshopReveal + 1];
@@ -1721,7 +1777,8 @@
     teaser.hidden = !next;
     if (next) {
       const gate = Model.WORKSHOPS[state.workshopReveal];
-      teaser.innerHTML = `<span aria-hidden="true">?</span><div><strong>Prochain atelier à découvrir</strong><p>Achète ${gate.name} pour révéler la suite du réseau.</p></div>`;
+      const teaserMarkup = `<span aria-hidden="true">?</span><div><strong>Prochain atelier à découvrir</strong><p>Achète ${gate.name} pour révéler la suite du réseau.</p></div>`;
+      if (teaser.innerHTML !== teaserMarkup) teaser.innerHTML = teaserMarkup;
     }
   }
 
@@ -1737,10 +1794,10 @@
         && status.unlocked
         && !status.completed
         && status.cost <= state.flux;
-      card.hidden = !ready;
+      if (card.hidden !== !ready) card.hidden = !ready;
       const factor = Model.workshopUpgradeFactor(workshop.id, level);
-      card.querySelector(`#upgrade-effect-${workshop.id}`).textContent = `${format(status.cost)} flux · niveau ${level + 1}`;
-      card.querySelector(`#upgrade-status-${workshop.id}`).textContent = `Palier ${status.milestone} atteint : production ×${factor} pour ce cycle`;
+      setText(card.querySelector(`#upgrade-effect-${workshop.id}`), `${format(status.cost)} flux · niveau ${level + 1}`);
+      setText(card.querySelector(`#upgrade-status-${workshop.id}`), `Palier ${status.milestone} atteint : production ×${factor} pour ce cycle`);
     });
   }
 
@@ -2067,9 +2124,12 @@
     }
     if (timestamp - lastRender > 100) {
       render();
-      renderWorkshops();
-      renderWorkshopUpgrades();
       lastRender = timestamp;
+    }
+    if (timestamp - lastShopRender > 500) {
+      if (state.activeTab === "workshops") renderWorkshops();
+      if (state.activeTab === "upgrades") renderWorkshopUpgrades();
+      lastShopRender = timestamp;
     }
     if (timestamp - lastLearningRender > 10000) {
       refreshMasteryScores();
@@ -2192,7 +2252,7 @@
   showToast("Clique sur le noyau pour produire tes premiers flux.");
   requestAnimationFrame(frame);
 
-  window.NexusGameDebug = {
+  if (["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname) || window.location.protocol === "file:") window.NexusGameDebug = {
     getState: () => JSON.parse(JSON.stringify(state)),
     addFlux,
     createPendingEvent,
