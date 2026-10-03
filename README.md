@@ -54,6 +54,12 @@ Cette protection freine l'édition manuelle des fichiers. Le jeu et sa clé s'ex
 
 L'audit `tests/browser-android-saves.mjs` vérifie le transfert entre navigateurs, l'altération de chaque champ et les achats sur écran tactile avec 35 minutes de jeu simulées. Il utilise Playwright et les variables `NEXUS_GAME_AUDIT_URL`, `NEXUS_PLAYWRIGHT_PATH` et `NEXUS_CHROME_PATH`.
 
+## Expressions mathématiques
+
+Le jeu et le laboratoire partagent `math-layout.js` pour regrouper les expressions entières : égalités, polynômes, produits de facteurs, suites, coordonnées et notations trigonométriques. Les fractions, exposants et racines conservent leur rendu. Une formule trop large pour son conteneur est réduite juste assez pour tenir sur une seule ligne ; la prose peut revenir à la ligne autour d'elle.
+
+`tests/math-layout.mjs` vérifie des expressions témoins et 400 variantes de paraboles. `tests/browser-math-layout.mjs` reproduit une formule canonique complète dans le jeu et le laboratoire de 320 à 1366 px, avant et après correction, ainsi qu'au redimensionnement. L'audit général vérifie aussi que chaque formule de parabole est couverte en entier, plutôt que seulement les fragments déjà reconnus.
+
 ## Vérifications
 
 ```sh

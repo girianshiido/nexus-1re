@@ -35,9 +35,10 @@ try {
     for (const kind of kinds) {
       await page.selectOption("#kind-select", kind);
       for (let variant = 0; variant < variantsPerFormat; variant += 1) {
-        await page.evaluate(generateNewVariant => {
+        await page.evaluate(async generateNewVariant => {
           if (generateNewVariant) document.querySelector("#new-variant").click();
           document.querySelector("#reveal-answer").click();
+          await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
         }, variant > 0);
         renderedQuestions += 1;
 
@@ -108,6 +109,13 @@ try {
             issues.push("racine carrée restée en texte brut");
           }
           const currentKind = document.querySelector("#kind-select").value;
+          if (["quadratic-vertex", "quadratic-roots"].includes(currentKind)) {
+            const prompt = document.querySelector("#question-text");
+            const formula = prompt.textContent.match(/f\(x\)\s*=\s*(.+?)\s*\?/)?.[0]?.replace(/\s*\?$/, "");
+            if (!formula || ![...prompt.querySelectorAll(".math-inline")].some(block => block.textContent === formula)) {
+              issues.push("formule de parabole protégée seulement en partie");
+            }
+          }
           if (currentKind === "operation-priority") {
             const mentalText = document.querySelector("#question-text").textContent;
             if (!mentalText.includes("\u2060") || !mentalText.includes("\u00a0")) {

@@ -69,6 +69,7 @@ button { color: inherit; }
 
 .lab-layout { display: grid; grid-template-columns: minmax(250px, 300px) minmax(480px, 1fr) minmax(220px, 260px); gap: 16px; align-items: start; }
 .lab-controls, .lab-workbench, .lab-session { border: 1px solid var(--line); border-radius: 22px; background: var(--panel); box-shadow: var(--shadow); }
+.lab-controls, .lab-workbench, .lab-session { min-width: 0; }
 .lab-controls { padding: 20px; }
 .lab-controls section + section { margin-top: 22px; padding-top: 20px; border-top: 1px solid var(--line); }
 .section-heading { display: flex; align-items: baseline; gap: 9px; margin-bottom: 13px; }
@@ -102,6 +103,7 @@ select { width: 100%; min-height: 42px; padding: 9px 34px 9px 10px; border: 1px 
 .validation-chip.error { color: var(--danger); }
 .question-text { min-height: 76px; margin: 18px auto 25px; max-width: 950px; font-size: clamp(21px, 2.4vw, 34px); line-height: 1.32; text-align: center; overflow-wrap: normal; word-break: normal; }
 .math-inline { display: inline-block; white-space: nowrap; }
+.answer-button { min-width: 0; }
 .math-inline-fraction { display: inline-flex; align-items: center; vertical-align: baseline; }
 .math-sub, .math-sup { font-family: inherit; font-size: 0.65em; line-height: 0; }
 .math-sub { vertical-align: -0.34em; }

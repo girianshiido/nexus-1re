@@ -32,6 +32,11 @@ assert.match(app, /Calculer mentalement\\s\*:[^]*\\u2060/, "une expression de ca
 assert.match(exerciseLabApp, /Calculer mentalement\\s\*:[^]*\\u2060/, "le laboratoire doit garder les calculs mentaux insécables");
 
 assert.match(html, /question-engine\.js[^]*learning-model\.js[^]*game-model\.js[^]*app\.js/, "les scripts doivent être chargés dans le bon ordre");
+assert.match(html, /math-layout\.js[^]*app\.js/, "la protection des formules doit être chargée avant le jeu");
+assert.match(exerciseLabHtml, /math-layout\.js[^]*app\.js/, "le laboratoire doit charger la même protection des formules");
+assert.match(app, /NexusMathLayout\.ranges/, "le jeu doit protéger des expressions entières");
+assert.match(exerciseLabApp, /NexusMathLayout\.ranges/, "le laboratoire doit utiliser le même découpage des expressions");
+assert.match(serviceWorker, /math-layout\.js\?v=1/, "le module de mise en page mathématique doit fonctionner hors ligne");
 assert.match(html, /viewport-fit=cover/, "la vue mobile doit être configurée");
 assert.match(html, /maximum-scale=1/, "le zoom par pincement doit être désactivé");
 assert.match(html, /user-scalable=no/, "le zoom tactile doit être verrouillé");

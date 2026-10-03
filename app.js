@@ -147,17 +147,18 @@
       .replace(/(Calculer mentalement\s*:\s*)([^.]+)(\.)/gi, (whole, introduction, expression, stop) =>
         `${introduction}${expression.replace(/\s/g, "\u00a0").replace(/([+−×÷])/g, "\u2060$1\u2060")}${stop}`);
     let cursor = 0;
-    for (const match of source.matchAll(MATH_INLINE_PATTERN)) {
-      appendDecoratedMath(fragment, source.slice(cursor, match.index));
+    for (const { start, end } of window.NexusMathLayout.ranges(source, MATH_INLINE_PATTERN)) {
+      appendDecoratedMath(fragment, source.slice(cursor, start));
       const formula = document.createElement("span");
       formula.className = "math-inline";
-      appendDecoratedMath(formula, match[0]);
+      appendDecoratedMath(formula, source.slice(start, end));
       if (formula.querySelector(".math-fraction")) formula.classList.add("math-inline-fraction");
       fragment.append(formula);
-      cursor = match.index + match[0].length;
+      cursor = end;
     }
     appendDecoratedMath(fragment, source.slice(cursor));
     target.replaceChildren(fragment);
+    window.NexusMathLayout.fitWhenReady(target);
   }
 
   const dom = {
